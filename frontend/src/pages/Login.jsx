@@ -5,7 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 /**
  * Login Component for Jal Seva
  */
-function Login() {
+function Login({ onNavigate }) {
   const [mode, setMode] = useState('customer'); // 'customer' or 'supplier'
   const [customerStep, setCustomerStep] = useState('phone'); // 'phone' or 'otp'
   const [phone, setPhone] = useState('');
@@ -418,9 +418,13 @@ void main() {
           <div className="mt-6 text-center">
             <p className="text-sm text-on-surface-variant">
               Don't have an account?{' '}
-              <a className="text-primary font-bold hover:underline" href="#">
+              <button
+                type="button"
+                onClick={() => onNavigate('signup')}
+                className="text-primary font-bold hover:underline outline-none"
+              >
                 Sign Up
-              </a>
+              </button>
             </p>
           </div>
         </div>
