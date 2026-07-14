@@ -121,17 +121,23 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="text-center md:text-right text-[#3E2723]">
-            <div className="font-bold">{profile.name}</div>
-            <div className="text-xs">{profile.phone} | {profile.area}</div>
-          </div>
+          {/* User profile details and logout aligned on the right */}
+          <div className="flex flex-col sm:flex-row items-center gap-4 text-[#3E2723] md:ml-auto">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-3xl text-[#4FC3F7]">account_circle</span>
+              <div className="text-center sm:text-left md:text-right">
+                <div className="font-bold text-sm leading-tight">{profile.name}</div>
+                <div className="text-[11px] text-[#3E2723]/80">{profile.phone} | {profile.area}</div>
+              </div>
+            </div>
 
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 border border-[#3E2723] text-[#3E2723] font-bold rounded-lg hover:bg-[#3E2723]/10 transition-all text-sm outline-none"
-          >
-            Logout
-          </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 border border-[#3E2723] text-[#3E2723] font-bold rounded-lg hover:bg-[#3E2723]/10 transition-all text-sm outline-none"
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         {/* Disruption Alert banner if present */}
