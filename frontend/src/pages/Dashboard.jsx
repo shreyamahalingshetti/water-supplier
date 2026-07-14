@@ -1,89 +1,81 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 /**
- * Customer Dashboard Component for Jal Seva
- * Adheres strictly to the 3-color scheme:
- * 1. Light water blue (#4FC3F7) - buttons, toggle buttons, highlights, accents
- * 2. White (#FFFFFF) - backgrounds, cards
- * 3. Warm brown (#3E2723) - text, headers, outlines, borders, labels
+ * Customer Dashboard for Jal Seva
+ * Color scheme:
+ *  - #4FC3F7  water blue  → buttons, accents, active states
+ *  - #FFFFFF  white       → backgrounds, cards
+ *  - #3E2723  dark brown  → text, borders, labels
  */
 function Dashboard() {
   const navigate = useNavigate();
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef(null);
 
-  // Mock initial customer profile details
   const [profile] = useState({
     name: 'John Doe',
     phone: '+91 9876543210',
-    area: 'Indiranagar'
+    area: 'Indiranagar',
+    initials: 'JD',
   });
 
-  // Mock state for orders
-  const [orders, setOrders] = useState([
+  const [orders] = useState([
     {
       id: 'ORD-8291',
       quantity: 2,
       deliveryDate: '2026-07-15',
-      timeSlot: 'Morning 7am-10am',
+      timeSlot: 'Morning 7am–10am',
       address: 'No 42, 5th Cross, Indiranagar',
-      status: 'Pending'
+      status: 'Pending',
     },
     {
       id: 'ORD-7193',
       quantity: 1,
       deliveryDate: '2026-07-12',
-      timeSlot: 'Afternoon 12pm-3pm',
+      timeSlot: 'Afternoon 12pm–3pm',
       address: 'No 42, 5th Cross, Indiranagar',
-      status: 'Delivered'
-    }
+      status: 'Delivered',
+    },
   ]);
 
-  // Mock state for recurring orders (allows toggling active state in UI)
   const [recurringOrders, setRecurringOrders] = useState([
     {
       id: 'REC-304',
       quantity: 1,
       frequencyDays: 3,
       nextDelivery: '2026-07-17',
-      address: 'No 42, 5th Cross, Indiranagar',
-      isActive: true
+      isActive: true,
     },
     {
       id: 'REC-112',
       quantity: 2,
       frequencyDays: 7,
       nextDelivery: '2026-07-21',
-      address: 'No 42, 5th Cross, Indiranagar',
-      isActive: false
-    }
+      isActive: false,
+    },
   ]);
 
-  // Mock disruption alert
   const [disruption] = useState(
     'Notice: Delivery services will be suspended on 2026-07-16 due to local pipe main repair works. Please stock up accordingly.'
   );
 
-  // Mock notification history
   const [notifications] = useState([
     {
       id: 'NTF-1',
       time: '10 mins ago',
       message: 'Your order ORD-8291 has been confirmed for delivery on 2026-07-15.',
-      status: 'sent'
     },
     {
       id: 'NTF-2',
       time: '2 days ago',
       message: 'Your order ORD-7193 was successfully delivered.',
-      status: 'sent'
-    }
+    },
   ]);
 
   const toggleRecurringActive = (id) => {
-    setRecurringOrders(
-      recurringOrders.map((rec) =>
-        rec.id === id ? { ...rec, isActive: !rec.isActive } : rec
-      )
+    setRecurringOrders((prev) =>
+      prev.map((rec) => (rec.id === id ? { ...rec, isActive: !rec.isActive } : rec))
     );
   };
 
@@ -92,23 +84,35 @@ function Dashboard() {
     navigate('/login');
   };
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[#FFFFFF] p-4 md:p-8 flex flex-col items-center">
-      <div className="w-full max-w-4xl space-y-6">
-        
-        {/* Header Branding & User details */}
-        <div className="w-full p-6 border border-[#3E2723]/30 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4 bg-[#FFFFFF]">
+    <div className="min-h-screen bg-[#F5F7FA] flex flex-col">
+
+      {/* ── TOP NAV ── */}
+      <header className="sticky top-0 z-50 bg-[#FFFFFF] border-b border-[#3E2723]/15 shadow-sm">
+        <div className="max-w-screen-xl mx-auto px-6 py-3 flex items-center justify-between">
+
+          {/* Brand */}
           <div className="flex items-center gap-3">
-            {/* Logo illustration */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="none"
               stroke="#4FC3F7"
-              strokeWidth="2.0"
+              strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="w-10 h-10 text-[#4FC3F7]"
+              className="w-9 h-9 shrink-0"
             >
               <rect x="10" y="2" width="4" height="2" rx="0.5" fill="#4FC3F7" />
               <path d="M11 4h2v2h-2z" />
@@ -116,157 +120,252 @@ function Dashboard() {
               <path d="M7 15c2-1 3 1 5 0s3-1 5 0" />
             </svg>
             <div>
-              <h1 className="text-xl font-bold text-[#3E2723]">Jal Seva</h1>
-              <p className="text-xs text-[#3E2723]/80">Fresh water, delivered to your door</p>
+              <span className="text-lg font-bold text-[#3E2723] leading-none">Jal Seva</span>
+              <p className="text-[11px] text-[#3E2723]/60 leading-none mt-0.5 hidden sm:block">
+                Fresh water, delivered to your door
+              </p>
             </div>
           </div>
 
-          {/* User profile details and logout aligned on the right */}
-          <div className="flex flex-col sm:flex-row items-center gap-4 text-[#3E2723] md:ml-auto">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-3xl text-[#4FC3F7]">account_circle</span>
-              <div className="text-center sm:text-left md:text-right">
-                <div className="font-bold text-sm leading-tight">{profile.name}</div>
-                <div className="text-[11px] text-[#3E2723]/80">{profile.phone} | {profile.area}</div>
-              </div>
-            </div>
-
+          {/* Nav right: New Order + Account avatar */}
+          <div className="flex items-center gap-3">
             <button
-              onClick={handleLogout}
-              className="px-4 py-2 border border-[#3E2723] text-[#3E2723] font-bold rounded-lg hover:bg-[#3E2723]/10 transition-all text-sm outline-none"
+              onClick={() => navigate('/place-order')}
+              className="hidden sm:flex items-center gap-1.5 px-4 py-2 bg-[#4FC3F7] text-white font-semibold rounded-lg text-sm hover:bg-[#29B6F6] active:scale-95 transition-all"
             >
-              Logout
+              <span className="text-lg leading-none">+</span> New Order
             </button>
+
+            {/* Account avatar with dropdown */}
+            <div className="relative" ref={accountMenuRef}>
+              <button
+                onClick={() => setAccountMenuOpen((o) => !o)}
+                className="flex items-center gap-2 pl-1 pr-3 py-1.5 rounded-full hover:bg-[#3E2723]/8 transition-colors group"
+                aria-label="Account menu"
+              >
+                {/* Avatar circle */}
+                <div className="w-9 h-9 rounded-full bg-[#4FC3F7] flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
+                  {profile.initials}
+                </div>
+                <div className="hidden md:block text-left">
+                  <div className="text-sm font-semibold text-[#3E2723] leading-tight">
+                    {profile.name}
+                  </div>
+                  <div className="text-[11px] text-[#3E2723]/60 leading-tight">
+                    {profile.area}
+                  </div>
+                </div>
+                {/* Chevron */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className={`w-4 h-4 text-[#3E2723]/50 transition-transform duration-200 ${
+                    accountMenuOpen ? 'rotate-180' : ''
+                  }`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Dropdown */}
+              {accountMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-[#3E2723]/10 overflow-hidden z-50 animate-[fadeIn_0.15s_ease]">
+                  {/* Profile info header */}
+                  <div className="px-4 py-3 bg-[#4FC3F7]/8 border-b border-[#3E2723]/10">
+                    <div className="font-semibold text-[#3E2723] text-sm">{profile.name}</div>
+                    <div className="text-[11px] text-[#3E2723]/60 mt-0.5">{profile.phone}</div>
+                    <div className="text-[11px] text-[#3E2723]/60">{profile.area}</div>
+                  </div>
+                  {/* Menu items */}
+                  <div className="py-1">
+                    <button
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#3E2723] hover:bg-[#F5F7FA] transition-colors text-left"
+                      onClick={() => { setAccountMenuOpen(false); }}
+                    >
+                      <span className="material-symbols-outlined text-[18px] text-[#4FC3F7]">person</span>
+                      My Profile
+                    </button>
+                    <button
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#3E2723] hover:bg-[#F5F7FA] transition-colors text-left"
+                      onClick={() => { setAccountMenuOpen(false); navigate('/place-order'); }}
+                    >
+                      <span className="material-symbols-outlined text-[18px] text-[#4FC3F7]">add_shopping_cart</span>
+                      New Order
+                    </button>
+                    <div className="border-t border-[#3E2723]/10 my-1" />
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">logout</span>
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* Disruption Alert banner if present */}
+      {/* ── PAGE BODY ── */}
+      <main className="flex-1 max-w-screen-xl mx-auto w-full px-6 py-8 space-y-6">
+
+        {/* Disruption banner */}
         {disruption && (
-          <div className="w-full p-4 border border-[#3E2723] rounded-xl bg-[#FFFFFF] flex items-start gap-3 animate-in fade-in duration-300">
-            <span className="material-symbols-outlined text-[#3E2723] mt-0.5">warning</span>
-            <div className="text-sm text-[#3E2723]">
-              <span className="font-bold block uppercase tracking-wider text-xs mb-1">Service Announcement</span>
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
+            <span className="material-symbols-outlined text-amber-500 mt-0.5 shrink-0">warning</span>
+            <div className="text-sm">
+              <span className="font-bold uppercase tracking-wider text-xs block mb-0.5">
+                Service Announcement
+              </span>
               {disruption}
             </div>
           </div>
         )}
 
-        {/* Quick actions panel */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-6">
-            
-            {/* Active Bookings List */}
-            <div className="p-6 border border-[#3E2723]/30 rounded-xl bg-[#FFFFFF] space-y-4">
-              <div className="flex justify-between items-center border-b border-[#3E2723]/20 pb-2">
-                <h2 className="text-lg font-bold text-[#3E2723]">Your Bookings</h2>
+        {/* ── MAIN GRID: left 2/3 + right 1/3 ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          {/* LEFT COLUMN */}
+          <div className="lg:col-span-2 space-y-6">
+
+            {/* Your Bookings */}
+            <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#3E2723]/10">
+                <h2 className="text-base font-bold text-[#3E2723]">Your Bookings</h2>
                 <button
                   onClick={() => navigate('/place-order')}
-                  className="px-4 py-2 bg-[#4FC3F7] text-[#FFFFFF] font-bold rounded-lg hover:bg-opacity-90 active:scale-95 transition-all text-xs outline-none"
+                  className="flex items-center gap-1 px-4 py-2 bg-[#4FC3F7] text-white font-semibold rounded-lg text-xs hover:bg-[#29B6F6] active:scale-95 transition-all"
                 >
                   + New Order
                 </button>
               </div>
 
-              <div className="space-y-3">
+              <div className="divide-y divide-[#3E2723]/8">
                 {orders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="p-4 border border-[#3E2723]/20 rounded-lg text-sm text-[#3E2723] flex justify-between items-center"
-                  >
+                  <div key={order.id} className="flex items-center justify-between px-6 py-4 hover:bg-[#F5F7FA] transition-colors">
                     <div className="space-y-1">
-                      <div className="font-bold">{order.id} ({order.quantity} Can{order.quantity > 1 ? 's' : ''})</div>
-                      <div className="text-xs text-[#3E2723]/80">Date: {order.deliveryDate} | {order.timeSlot}</div>
-                      <div className="text-xs text-[#3E2723]/80">Address: {order.address}</div>
+                      <div className="font-semibold text-[#3E2723] text-sm">
+                        {order.id} &nbsp;·&nbsp; {order.quantity} Can{order.quantity > 1 ? 's' : ''}
+                      </div>
+                      <div className="text-xs text-[#3E2723]/60">{order.deliveryDate} &nbsp;|&nbsp; {order.timeSlot}</div>
+                      <div className="text-xs text-[#3E2723]/60">{order.address}</div>
                     </div>
-                    <div>
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          order.status === 'Pending'
-                            ? 'border border-[#3E2723] text-[#3E2723]'
-                            : 'bg-[#4FC3F7] text-[#FFFFFF]'
-                        }`}
-                      >
-                        {order.status.toUpperCase()}
-                      </span>
-                    </div>
+                    <span
+                      className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide ${
+                        order.status === 'Pending'
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : 'bg-[#4FC3F7]/15 text-[#0288D1] border border-[#4FC3F7]/40'
+                      }`}
+                    >
+                      {order.status.toUpperCase()}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Recurring Schedules */}
-            <div className="p-6 border border-[#3E2723]/30 rounded-xl bg-[#FFFFFF] space-y-4">
-              <h2 className="text-lg font-bold text-[#3E2723] border-b border-[#3E2723]/20 pb-2">
-                Recurring Subscriptions
-              </h2>
+            {/* Recurring Subscriptions */}
+            <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-[#3E2723]/10">
+                <h2 className="text-base font-bold text-[#3E2723]">Recurring Subscriptions</h2>
+              </div>
 
-              <div className="space-y-3">
+              <div className="divide-y divide-[#3E2723]/8">
                 {recurringOrders.map((rec) => (
                   <div
                     key={rec.id}
-                    className="p-4 border border-[#3E2723]/20 rounded-lg text-sm text-[#3E2723] flex flex-col md:flex-row justify-between items-start md:items-center gap-3"
+                    className="flex items-center justify-between px-6 py-4 hover:bg-[#F5F7FA] transition-colors"
                   >
                     <div className="space-y-1">
-                      <div className="font-bold">{rec.id} ({rec.quantity} Can{rec.quantity > 1 ? 's' : ''})</div>
-                      <div className="text-xs text-[#3E2723]/80">Frequency: Deliver every {rec.frequencyDays} Days</div>
-                      <div className="text-xs text-[#3E2723]/80">Next delivery: {rec.nextDelivery}</div>
+                      <div className="font-semibold text-[#3E2723] text-sm">
+                        {rec.id} &nbsp;·&nbsp; {rec.quantity} Can{rec.quantity > 1 ? 's' : ''}
+                      </div>
+                      <div className="text-xs text-[#3E2723]/60">
+                        Every {rec.frequencyDays} days &nbsp;·&nbsp; Next: {rec.nextDelivery}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                      <span
-                        className={`text-xs font-bold ${
-                          rec.isActive ? 'text-[#4FC3F7]' : 'text-[#3E2723]/50 line-through'
-                        }`}
-                      >
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`text-[11px] font-bold ${rec.isActive ? 'text-[#4FC3F7]' : 'text-[#3E2723]/40'}`}>
                         {rec.isActive ? 'ACTIVE' : 'PAUSED'}
                       </span>
+                      {/* Toggle switch */}
                       <button
                         onClick={() => toggleRecurringActive(rec.id)}
-                        className={`w-14 h-8 flex items-center rounded-full p-1 transition-all duration-300 outline-none ${
-                          rec.isActive ? 'bg-[#4FC3F7]' : 'bg-[#FFFFFF] border border-[#3E2723]'
+                        className={`relative w-12 h-6 rounded-full transition-colors duration-300 outline-none focus:ring-2 focus:ring-[#4FC3F7]/40 ${
+                          rec.isActive ? 'bg-[#4FC3F7]' : 'bg-[#3E2723]/20'
                         }`}
                       >
-                        <div
-                          className={`w-6 h-6 rounded-full transition-all duration-300 flex items-center justify-center text-[9px] font-bold ${
-                            rec.isActive
-                              ? 'translate-x-6 bg-[#FFFFFF] text-[#4FC3F7]'
-                              : 'translate-x-0 bg-[#3E2723] text-[#FFFFFF]'
+                        <span
+                          className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all duration-300 ${
+                            rec.isActive ? 'left-7' : 'left-1'
                           }`}
-                        >
-                          {rec.isActive ? 'ON' : 'OFF'}
-                        </div>
+                        />
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-
           </div>
 
-          {/* Right Sidebar: Notification logs */}
+          {/* RIGHT COLUMN */}
           <div className="space-y-6">
-            <div className="p-6 border border-[#3E2723]/30 rounded-xl bg-[#FFFFFF] space-y-4">
-              <h2 className="text-lg font-bold text-[#3E2723] border-b border-[#3E2723]/20 pb-2">
-                Recent Alerts
-              </h2>
 
-              <div className="space-y-4">
+            {/* Profile card */}
+            <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-[#4FC3F7] flex items-center justify-center text-white font-bold text-base shadow">
+                  {profile.initials}
+                </div>
+                <div>
+                  <div className="font-bold text-[#3E2723] text-sm">{profile.name}</div>
+                  <div className="text-[11px] text-[#3E2723]/60">{profile.phone}</div>
+                  <div className="text-[11px] text-[#3E2723]/60">{profile.area}</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="p-2 rounded-lg bg-[#F5F7FA]">
+                  <div className="text-lg font-bold text-[#4FC3F7]">{orders.length}</div>
+                  <div className="text-[10px] text-[#3E2723]/60 uppercase tracking-wide">Orders</div>
+                </div>
+                <div className="p-2 rounded-lg bg-[#F5F7FA]">
+                  <div className="text-lg font-bold text-[#4FC3F7]">
+                    {recurringOrders.filter((r) => r.isActive).length}
+                  </div>
+                  <div className="text-[10px] text-[#3E2723]/60 uppercase tracking-wide">Active Subs</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Alerts */}
+            <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#3E2723]/10">
+                <h2 className="text-base font-bold text-[#3E2723]">Recent Alerts</h2>
+              </div>
+              <div className="divide-y divide-[#3E2723]/8">
                 {notifications.map((ntf) => (
-                  <div key={ntf.id} className="space-y-1 text-sm text-[#3E2723]">
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-[#4FC3F7] text-xs">WHATSAPP</span>
-                      <span className="text-[10px] text-[#3E2723]/60">{ntf.time}</span>
+                  <div key={ntf.id} className="px-5 py-4 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-[#4FC3F7] uppercase tracking-wider">
+                        WhatsApp
+                      </span>
+                      <span className="text-[10px] text-[#3E2723]/50">{ntf.time}</span>
                     </div>
-                    <p className="text-[#3E2723]/90 text-xs leading-relaxed">{ntf.message}</p>
-                    <div className="border-b border-[#3E2723]/10 pt-2" />
+                    <p className="text-xs text-[#3E2723]/80 leading-relaxed">{ntf.message}</p>
                   </div>
                 ))}
               </div>
             </div>
+
           </div>
         </div>
-
-      </div>
+      </main>
     </div>
   );
 }
