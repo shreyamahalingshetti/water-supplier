@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 /**
  * Login Component for Jal Seva
  */
-function Login({ onNavigate }) {
+function Login() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState('customer'); // 'customer' or 'supplier'
   const [customerStep, setCustomerStep] = useState('phone'); // 'phone' or 'otp'
   const [phone, setPhone] = useState('');
@@ -420,7 +422,7 @@ void main() {
               Don't have an account?{' '}
               <button
                 type="button"
-                onClick={() => onNavigate('signup')}
+                onClick={() => navigate('/signup')}
                 className="text-primary font-bold hover:underline outline-none"
               >
                 Sign Up

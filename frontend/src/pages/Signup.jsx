@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * Signup Component for Jal Seva
@@ -7,7 +8,8 @@ import React, { useState } from 'react';
  * 2. White (#FFFFFF) - background, card
  * 3. Warm brown (#8D6E63) - headings, labels, secondary text
  */
-function Signup({ onNavigate }) {
+function Signup() {
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [area, setArea] = useState('');
@@ -68,7 +70,7 @@ function Signup({ onNavigate }) {
               Account created successfully! An OTP will be sent to verify your phone number (+91 {phone}).
             </p>
             <button
-              onClick={() => onNavigate('login')}
+              onClick={() => navigate('/login')}
               className="w-full py-3 bg-[#4FC3F7] text-[#FFFFFF] font-bold rounded-lg hover:bg-opacity-90 active:scale-95 transition-all text-center outline-none focus:ring-2 focus:ring-[#4FC3F7]"
             >
               Go to Login
@@ -153,7 +155,7 @@ function Signup({ onNavigate }) {
           <p className="text-sm text-[#8D6E63]">
             Already have an account?{' '}
             <button
-              onClick={() => onNavigate('login')}
+              onClick={() => navigate('/login')}
               className="font-bold hover:underline text-[#4FC3F7] outline-none"
             >
               Login

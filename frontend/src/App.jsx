@@ -1,21 +1,28 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login.jsx';
 import Signup from './pages/Signup.jsx';
 
 /**
- * Main App Container managing screen routing
+ * Main App Container managing screen routing using React Router
  */
 function App() {
-  const [view, setView] = useState('login'); // 'login' or 'signup'
-
   return (
-    <div className="min-h-screen w-screen bg-background">
-      {view === 'login' ? (
-        <Login onNavigate={setView} />
-      ) : (
-        <Signup onNavigate={setView} />
-      )}
-    </div>
+    <Router>
+      <div className="min-h-screen w-screen bg-background animate-in fade-in duration-300">
+        <Routes>
+          {/* Default landing page routes */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          
+          {/* Auth screens */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          
+          {/* Fallback redirection for undefined routes */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
