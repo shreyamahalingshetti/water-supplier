@@ -10,13 +10,14 @@ const disruptionController = {
    */
   create: async (req, res, next) => {
     try {
-      // Role verification: check if authenticated user is a supplier (email authenticated)
-      if (!req.user || !req.user.email) {
-        return sendError(res, 'Access denied. Supplier permissions required to announce disruptions.', 403);
+      // Allow admin OR supplier roles to announce disruptions
+      const role = req.user && req.user.role;
+      if (!req.user || (role !== 'admin' && role !== 'supplier')) {
+        return sendError(res, 'Access denied. Admin or supplier permissions required.', 403);
       }
 
-      const supplierId = req.user.id;
-      const disruption = await disruptionService.createDisruption(req.body, supplierId);
+      const supplierPhone = req.user.phone;
+      const disruption = await disruptionService.createDisruption(req.body, supplierPhone);
 
       return sendSuccess(res, 'Disruption announcement created successfully', disruption, 201);
     } catch (error) {
@@ -69,9 +70,10 @@ const disruptionController = {
    */
   delete: async (req, res, next) => {
     try {
-      // Role verification: check if authenticated user is a supplier (email authenticated)
-      if (!req.user || !req.user.email) {
-        return sendError(res, 'Access denied. Supplier permissions required to delete disruptions.', 403);
+      // Allow admin OR supplier roles to delete disruptions
+      const role = req.user && req.user.role;
+      if (!req.user || (role !== 'admin' && role !== 'supplier')) {
+        return sendError(res, 'Access denied. Admin or supplier permissions required.', 403);
       }
 
       const { id } = req.params;

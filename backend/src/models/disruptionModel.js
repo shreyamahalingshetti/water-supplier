@@ -84,13 +84,15 @@ const Disruption = {
       .from('disruptions')
       .select('*')
       .gte('created_at', start)
-      .lte('created_at', end);
+      .lte('created_at', end)
+      .order('created_at', { ascending: false });
 
     if (error) {
       throw error;
     }
 
-    return disruptions.length > 0 ? Disruption.mapRow(disruptions[0]) : null;
+    // Return all disruptions for the date (not just the first)
+    return (disruptions || []).map(Disruption.mapRow);
   },
 
   /**

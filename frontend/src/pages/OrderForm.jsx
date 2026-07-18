@@ -1,26 +1,22 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext.jsx';
+import { translations, t } from '../utils/translations.js';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-/**
- * OrderForm Component for Jal Seva
- * Color scheme (strict):
- * 1. Water blue (#4FC3F7) — accents, selected state, buttons, highlights
- * 2. White (#FFFFFF)     — backgrounds, card, unselected options
- * 3. Warm brown (#3E2723) — headings, labels, text, borders
- */
-
 /* Can size options with pricing */
 const CAN_SIZES = [
-  { value: '20L', label: '20L Can', price: 70, popular: true },
-  { value: '15L', label: '15L Can', price: 55, popular: false },
-  { value: '10L', label: '10L Can', price: 40, popular: false },
-  { value: '5L',  label: '5L Can',  price: 25, popular: false },
+  { value: '20L', price: 70, popular: true },
+  { value: '15L', price: 55, popular: false },
+  { value: '10L', price: 40, popular: false },
+  { value: '5L',  price: 25, popular: false },
 ];
 
 function OrderForm() {
   const navigate = useNavigate();
+  const { language, toggleLanguage } = useLanguage();
+  const tr = translations[language];
 
   // Date helper — tomorrow's date in YYYY-MM-DD
   const getTomorrowDateString = () => {
@@ -61,17 +57,17 @@ function OrderForm() {
   /* ── Validation ── */
   const validateForm = () => {
     const e = {};
-    if (cans < 1)           e.cans         = 'Number of cans must be at least 1';
+    if (cans < 1)           e.cans         = tr.order_err_cans;
     if (!deliveryDate) {
-      e.deliveryDate = 'Delivery date is required';
+      e.deliveryDate = tr.order_err_date_req;
     } else {
       const sel = new Date(deliveryDate); sel.setHours(0,0,0,0);
       const tom = new Date(getTomorrowDateString()); tom.setHours(0,0,0,0);
-      if (sel < tom) e.deliveryDate = 'Delivery date cannot be today or in the past';
+      if (sel < tom) e.deliveryDate = tr.order_err_date_past;
     }
-    if (!area.trim())       e.area         = 'Delivery area is required';
+    if (!area.trim())       e.area         = tr.order_err_area;
     if (isRecurring && frequencyDays < 1)
-                            e.frequencyDays = 'Delivery frequency must be at least 1 day';
+                            e.frequencyDays = tr.order_err_freq;
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -125,9 +121,21 @@ function OrderForm() {
     }
   };
 
-  /* ── Render ── */
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#FFFFFF]">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#FFFFFF] relative">
+      {/* Language Toggle floating top-right */}
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          onClick={toggleLanguage}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 border-water-blue text-water-blue text-xs font-bold hover:bg-water-blue hover:text-white transition-all duration-200"
+          style={{ borderColor: '#4FC3F7', color: '#4FC3F7' }}
+        >
+          🌐 <span>{tr.lang_current}</span>
+          <span className="opacity-60">|</span>
+          <span className="opacity-80">{tr.lang_toggle}</span>
+        </button>
+      </div>
+
       <div className="w-full max-w-md p-6 bg-[#FFFFFF] border border-[#3E2723]/30 rounded-xl shadow-md flex flex-col items-center">
 
         {/* Header */}
@@ -140,8 +148,8 @@ function OrderForm() {
             <path d="M7 14c1.5-0.75 2.5 0.75 4 0s2.5-0.75 4 0 2.5 0.75 4 0" />
             <path d="M7 17.5c1.5-0.75 2.5 0.75 4 0s2.5-0.75 4 0 2.5 0.75 4 0" />
           </svg>
-          <h1 className="text-2xl font-bold text-[#3E2723] mb-1">Jal Seva</h1>
-          <p className="text-sm text-[#3E2723]/80">Fresh water, delivered to your door</p>
+          <h1 className="text-2xl font-bold text-[#3E2723] mb-1">{tr.brand_name}</h1>
+          <p className="text-sm text-[#3E2723]/80">{tr.brand_tagline}</p>
         </div>
 
         {/* ── Success screen ── */}
@@ -154,39 +162,44 @@ function OrderForm() {
                 </svg>
               </div>
             </div>
-            <h2 className="text-xl font-bold text-[#3E2723]">Order Placed!</h2>
+            <h2 className="text-xl font-bold text-[#3E2723]">{tr.order_placed_title}</h2>
             <p className="text-sm text-[#3E2723]/90">
-              Your water delivery request has been recorded. We will send a WhatsApp notification shortly.
+              {tr.order_placed_desc}
             </p>
             <div className="p-4 bg-[#FFFFFF] border border-[#3E2723]/30 rounded-lg text-left text-sm text-[#3E2723] space-y-1">
               <div className="font-bold uppercase tracking-wider text-xs border-b border-[#3E2723]/30 pb-1 mb-2">
-                Booking Reference
+                {tr.order_ref}
               </div>
               {placedOrder?.id && (
-                <div>Order ID: <span className="font-semibold text-[#4FC3F7]">#{placedOrder.id}</span></div>
+                <div>{tr.order_id}: <span className="font-semibold text-[#4FC3F7]">#{placedOrder.id}</span></div>
               )}
-              <div>Quantity: <span className="font-semibold">{cans} Can(s)</span></div>
-              <div>Can Size: <span className="font-semibold">{canSize}</span></div>
-              <div>Price per Can: <span className="font-semibold">₹{pricePerCan}</span></div>
+              <div>{tr.order_quantity}: <span className="font-semibold">{cans} {language === 'kn' ? 'ಕ್ಯಾನ್(ಗಳು)' : 'Can(s)'}</span></div>
+              <div>{tr.order_can_size_ref}: <span className="font-semibold">{canSize}</span></div>
+              <div>{tr.order_price_ref}: <span className="font-semibold">₹{pricePerCan}</span></div>
               <div className="font-bold text-[#3E2723] border-t border-[#3E2723]/20 pt-1 mt-1">
-                Total: <span className="text-[#4FC3F7]">₹{totalPrice}</span>
+                {tr.order_total}: <span className="text-[#4FC3F7]">₹{totalPrice}</span>
               </div>
-              <div>Date: <span className="font-semibold">{deliveryDate}</span></div>
-              <div>Slot: <span className="font-semibold">{timeSlot}</span></div>
-              <div>Locality: <span className="font-semibold">{area}</span></div>
+              <div>{tr.order_date_ref}: <span className="font-semibold">{deliveryDate}</span></div>
+              <div>{tr.order_slot_ref}: <span className="font-semibold">
+                {timeSlot === 'Morning 7am-10am' ? tr.order_slot_morning :
+                 timeSlot === 'Afternoon 12pm-3pm' ? tr.order_slot_afternoon : tr.order_slot_evening}
+              </span></div>
+              <div>{tr.order_locality_ref}: <span className="font-semibold">{area}</span></div>
               {isRecurring && (
-                <div className="text-[#4FC3F7] font-semibold">★ Recurring: Every {frequencyDays} days</div>
+                <div className="text-[#4FC3F7] font-semibold">
+                  {t(tr, 'order_recurring_ref', { days: frequencyDays })}
+                </div>
               )}
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => navigate('/dashboard')}
                 className="flex-1 py-3 bg-[#FFFFFF] text-[#4FC3F7] font-bold rounded-lg border-2 border-[#4FC3F7] hover:bg-[#F0F9FF] active:scale-95 transition-all outline-none"
-              >My Orders</button>
+              >{tr.order_my_orders}</button>
               <button
                 onClick={() => { setOrderPlaced(false); setPlacedOrder(null); setApiError(''); setCans(1); setCanSize('20L'); setIsRecurring(false); }}
                 className="flex-1 py-3 bg-[#4FC3F7] text-[#FFFFFF] font-bold rounded-lg hover:bg-[#0288D1] active:scale-95 transition-all outline-none focus:ring-2 focus:ring-[#4FC3F7]"
-              >Book Another</button>
+              >{tr.order_book_another}</button>
             </div>
           </div>
 
@@ -194,12 +207,12 @@ function OrderForm() {
           /* ── Order form ── */
           <form onSubmit={handlePlaceOrderSubmit} className="w-full space-y-4">
             <h2 className="text-lg font-bold text-[#3E2723] text-center border-b border-[#3E2723]/20 pb-2">
-              Place Your Order
+              {tr.order_title}
             </h2>
 
             {/* Number of Cans */}
             <div>
-              <label className="block text-sm font-semibold text-[#3E2723] mb-1">Number of Cans</label>
+              <label className="block text-sm font-semibold text-[#3E2723] mb-1">{tr.order_num_cans}</label>
               <input
                 id="cans-input"
                 type="number"
@@ -213,7 +226,7 @@ function OrderForm() {
 
             {/* Can Size Selection */}
             <div>
-              <label className="block text-sm font-semibold text-[#3E2723] mb-2">Can Size</label>
+              <label className="block text-sm font-semibold text-[#3E2723] mb-2">{tr.order_can_size}</label>
               <div className="grid grid-cols-2 gap-2">
                 {CAN_SIZES.map((size) => {
                   const selected = canSize === size.value;
@@ -239,7 +252,7 @@ function OrderForm() {
                       {/* Popular badge */}
                       {size.popular && (
                         <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#4FC3F7] text-[#FFFFFF] text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
-                          MOST POPULAR
+                          {tr.order_most_popular}
                         </span>
                       )}
                       {/* Selected checkmark */}
@@ -251,7 +264,7 @@ function OrderForm() {
                         </div>
                       )}
                       <span className={`text-base font-bold ${selected ? 'text-[#4FC3F7]' : 'text-[#3E2723]'}`}>
-                        {size.label}
+                        {size.value} Can
                       </span>
                       <span className={`text-sm font-semibold mt-0.5 ${selected ? 'text-[#3E2723]' : 'text-[#3E2723]/70'}`}>
                         ₹{size.price}
@@ -264,7 +277,7 @@ function OrderForm() {
 
             {/* Delivery Date */}
             <div>
-              <label className="block text-sm font-semibold text-[#3E2723] mb-1">Delivery Date</label>
+              <label className="block text-sm font-semibold text-[#3E2723] mb-1">{tr.order_delivery_date}</label>
               <input
                 id="delivery-date-input"
                 type="date"
@@ -278,28 +291,28 @@ function OrderForm() {
 
             {/* Time Slot */}
             <div>
-              <label className="block text-sm font-semibold text-[#3E2723] mb-1">Preferred Time Slot</label>
+              <label className="block text-sm font-semibold text-[#3E2723] mb-1">{tr.order_time_slot}</label>
               <select
                 id="time-slot-select"
                 value={timeSlot}
                 onChange={(e) => setTimeSlot(e.target.value)}
                 className="w-full px-4 py-2 bg-[#FFFFFF] border border-[#3E2723] rounded-lg focus:ring-2 focus:ring-[#4FC3F7] focus:border-[#4FC3F7] transition-all text-base outline-none text-[#3E2723]"
               >
-                <option value="Morning 7am-10am">Morning 7am-10am</option>
-                <option value="Afternoon 12pm-3pm">Afternoon 12pm-3pm</option>
-                <option value="Evening 5pm-8pm">Evening 5pm-8pm</option>
+                <option value="Morning 7am-10am">{tr.order_slot_morning}</option>
+                <option value="Afternoon 12pm-3pm">{tr.order_slot_afternoon}</option>
+                <option value="Evening 5pm-8pm">{tr.order_slot_evening}</option>
               </select>
             </div>
 
             {/* Delivery Area — read-only from user profile */}
             <div>
               <label className="block text-sm font-semibold text-[#3E2723] mb-1">
-                Delivery Area/Locality
+                {tr.order_area}
                 <span className="ml-2 text-xs font-normal text-[#3E2723]/60 inline-flex items-center gap-1">
                   <svg xmlns="http://www.w3.org/2000/svg" className="inline w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                   </svg>
-                  Set during signup
+                  {tr.order_area_note}
                 </span>
               </label>
               <input
@@ -312,19 +325,19 @@ function OrderForm() {
 
             {/* Special Instructions */}
             <div>
-              <label className="block text-sm font-semibold text-[#3E2723] mb-1">Special Instructions (Optional)</label>
+              <label className="block text-sm font-semibold text-[#3E2723] mb-1">{tr.order_special}</label>
               <textarea
                 rows="2"
                 value={specialInstructions}
                 onChange={(e) => setSpecialInstructions(e.target.value)}
                 className="w-full px-4 py-2 bg-[#FFFFFF] border border-[#3E2723] rounded-lg focus:ring-2 focus:ring-[#4FC3F7] focus:border-[#4FC3F7] transition-all text-base outline-none text-[#3E2723] placeholder-[#3E2723]/50"
-                placeholder="e.g. Leave near the gate, ring bell twice"
+                placeholder={tr.order_special_placeholder}
               />
             </div>
 
             {/* Recurring Toggle */}
             <div className="flex items-center justify-between border-t border-[#3E2723]/20 pt-3">
-              <span className="text-sm font-semibold text-[#3E2723]">Set as Recurring Order?</span>
+              <span className="text-sm font-semibold text-[#3E2723]">{tr.order_recurring_toggle}</span>
               <button
                 type="button"
                 id="recurring-toggle"
@@ -336,7 +349,7 @@ function OrderForm() {
                 <div className={`w-6 h-6 rounded-full transition-all duration-300 flex items-center justify-center text-[9px] font-bold ${
                   isRecurring ? 'translate-x-6 bg-[#FFFFFF] text-[#4FC3F7]' : 'translate-x-0 bg-[#3E2723] text-[#FFFFFF]'
                 }`}>
-                  {isRecurring ? 'YES' : 'NO'}
+                  {isRecurring ? (language === 'kn' ? 'ಹೌದು' : 'YES') : (language === 'kn' ? 'ಇಲ್ಲ' : 'NO')}
                 </div>
               </button>
             </div>
@@ -344,7 +357,7 @@ function OrderForm() {
             {/* Frequency Days (shown only when recurring) */}
             {isRecurring && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-                <label className="block text-sm font-semibold text-[#3E2723] mb-1">Deliver every X days</label>
+                <label className="block text-sm font-semibold text-[#3E2723] mb-1">{tr.order_recurring_freq}</label>
                 <input
                   type="number"
                   min="1"
@@ -360,36 +373,39 @@ function OrderForm() {
 
             {/* ── Order Summary ── */}
             <div className="border-t border-[#3E2723]/30 pt-3 text-[#3E2723]">
-              <div className="text-xs font-bold uppercase tracking-wider mb-2">Order Summary</div>
+              <div className="text-xs font-bold uppercase tracking-wider mb-2">{tr.order_summary}</div>
               <div className="bg-[#FFFFFF] p-3 border border-[#3E2723]/30 rounded-lg text-sm text-[#3E2723] space-y-1.5">
                 <div className="flex justify-between">
-                  <span>Quantity</span>
-                  <span className="font-semibold">{cans} Can(s)</span>
+                  <span>{tr.order_quantity}</span>
+                  <span className="font-semibold">{cans} {language === 'kn' ? 'ಕ್ಯಾನ್(ಗಳು)' : 'Can(s)'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Can Size</span>
+                  <span>{tr.order_can_size_label}</span>
                   <span className="font-semibold">{canSize}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Price per Can</span>
+                  <span>{tr.order_price_per_can}</span>
                   <span className="font-semibold">₹{pricePerCan}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Schedule</span>
-                  <span className="font-semibold text-xs">{deliveryDate || '—'} · {timeSlot}</span>
+                  <span>{tr.order_schedule}</span>
+                  <span className="font-semibold text-xs">
+                    {deliveryDate || '—'} · {timeSlot === 'Morning 7am-10am' ? tr.order_slot_morning :
+                                          timeSlot === 'Afternoon 12pm-3pm' ? tr.order_slot_afternoon : tr.order_slot_evening}
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Location</span>
+                  <span>{tr.order_location}</span>
                   <span className="font-semibold">{area || '—'}</span>
                 </div>
                 {isRecurring && (
                   <div className="text-[#4FC3F7] font-semibold text-xs">
-                    ★ Recurring: every {frequencyDays} days
+                    {t(tr, 'order_recurring_label', { days: frequencyDays })}
                   </div>
                 )}
                 {/* Total price row */}
                 <div className="flex justify-between items-center border-t border-[#3E2723]/20 pt-2 mt-1">
-                  <span className="font-bold text-[#3E2723]">Total</span>
+                  <span className="font-bold text-[#3E2723]">{tr.order_total}</span>
                   <span className="text-lg font-bold text-[#4FC3F7]">₹{totalPrice}</span>
                 </div>
                 <div className="text-xs text-[#3E2723]/60 text-right">
@@ -417,7 +433,7 @@ function OrderForm() {
             >
               {loading
                 ? <div className="w-5 h-5 border-2 border-[#FFFFFF]/30 border-t-[#FFFFFF] rounded-full animate-spin" />
-                : isRecurring ? 'Place Recurring Order' : 'Place Order'
+                : isRecurring ? tr.order_btn_recurring : tr.order_btn
               }
             </button>
           </form>

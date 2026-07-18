@@ -25,16 +25,37 @@ const authMiddleware = async (req, res, next) => {
     // Convert Supabase UUID to database-compatible bigint string
     user.id = uuidToBigInt(user.id);
 
-    // Look up role in the database profile
+    // Look up role in the database profile — first by bigint ID, then by phone as fallback
     const User = require('../models/userModel');
-    const dbProfile = await User.findById(user.id);
+    let dbProfile = await User.findById(user.id);
+
+    // Fallback: if not found by ID, try phone (handles ID-alignment edge cases for suppliers)
+    if (!dbProfile) {
+      const phone = user.phone;
+      if (phone) {
+        dbProfile = await User.findByPhone(phone);
+        if (dbProfile) {
+          // Auto-align the stored ID to the current bigint so future lookups succeed
+          try {
+            await require('../config/supabase').supabaseAdmin
+              .from('users')
+              .update({ id: user.id })
+              .eq('phone', phone);
+            dbProfile.id = user.id;
+          } catch (_) { /* non-fatal */ }
+        }
+      }
+    }
+
     if (dbProfile) {
-      user.role = dbProfile.role;
+      user.role  = dbProfile.role;
+      user.phone = user.phone || dbProfile.phone;
       // If user is a supplier, ensure email is populated so legacy controller checks pass
       if (dbProfile.role === 'supplier' && !user.email) {
         user.email = dbProfile.phone || 'supplier@jalseva.com';
       }
     }
+
 
     // Convert request parameters
     if (req.params) {

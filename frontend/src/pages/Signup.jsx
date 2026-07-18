@@ -1,20 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext.jsx';
+import { translations } from '../utils/translations.js';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 /**
- * Signup Component for Jal Seva — Customer registration with OTP verification.
- * Flow:
- *  1. User fills name, phone, area → submit
- *  2. POST /api/auth/send-otp  (sends OTP to phone)
- *  3. On success: Show OTP input fields on the same page (no redirection)
- *  4. User enters 4-digit OTP → submit
- *  5. POST /api/auth/verify-otp
- *  6. On success: Call POST /api/users to create profile, store tokens, redirect to /dashboard
+ * Signup Component for Jal Seva — Customer registration.
  */
 function Signup() {
   const navigate = useNavigate();
+  const { language, toggleLanguage } = useLanguage();
+  const tr = translations[language];
 
   // Signup states
   const [name, setName]                       = useState('');
@@ -32,13 +29,13 @@ function Signup() {
   /* ── Validation ── */
   const validateForm = () => {
     const e = {};
-    if (!name.trim())          e.name  = 'Full name is required';
-    if (!phone)                e.phone = 'Phone number is required';
-    else if (phone.length < 10) e.phone = 'Please enter a valid 10-digit phone number';
-    if (!area.trim())          e.area  = 'Area / Locality is required';
-    if (!password)             e.password = 'Password is required';
-    else if (password.length < 6) e.password = 'Password must be at least 6 characters';
-    if (password !== confirmPassword) e.confirmPassword = 'Passwords do not match';
+    if (!name.trim())          e.name  = tr.signup_err_name;
+    if (!phone)                e.phone = tr.signup_err_phone_req;
+    else if (phone.length < 10) e.phone = tr.signup_err_phone_len;
+    if (!area.trim())          e.area  = tr.signup_err_area;
+    if (!password)             e.password = tr.signup_err_password_req;
+    else if (password.length < 6) e.password = tr.signup_err_password_len;
+    if (password !== confirmPassword) e.confirmPassword = tr.signup_err_confirm;
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -89,7 +86,7 @@ function Signup() {
       }
       localStorage.setItem('userRole', 'customer');
 
-      setSuccess('Signup successful! Redirecting...');
+      setSuccess(tr.signup_success);
       setTimeout(() => {
         navigate('/dashboard');
       }, 1000);
@@ -101,34 +98,47 @@ function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#FFFFFF]">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#FFFFFF] relative">
+      {/* Language Toggle floating top-right */}
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          onClick={toggleLanguage}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 border-water-blue text-water-blue text-xs font-bold hover:bg-water-blue hover:text-white transition-all duration-200"
+          style={{ borderColor: '#4FC3F7', color: '#4FC3F7' }}
+        >
+          🌐 <span>{tr.lang_current}</span>
+          <span className="opacity-60">|</span>
+          <span className="opacity-80">{tr.lang_toggle}</span>
+        </button>
+      </div>
+
       <div className="w-full max-w-md p-6 bg-[#FFFFFF] border border-[#3E2723]/30 rounded-xl shadow-md flex flex-col items-center animate-in fade-in duration-300">
 
         {/* Logo & Branding */}
         <div className="mb-6 text-center">
           <img
-            alt="Jal Seva Logo"
+            alt={tr.brand_name}
             className="w-16 h-16 object-contain mb-2 mx-auto filter hue-rotate-[190deg]"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOfW5NtncZ1w3PwW7WzQnH8BjGIOijsjQGZSVQwlDacSAtw78Os5hB69EhNLRXrSekrVa_tbltAT3v3mt3dI7P912PJ2lxI7YNj5lGD_dl0GU2OI3oThmsaKAmlWY5thUz_fwmvTMFlLGDpi-gntFr5FJlr3CPpBIWKsD34XTFhhuouFZMBVERa-jw6EVJKApqCmnDrown9LwPTPz2CduiCugMXwOT64y7i9Bd2K20XQ_1JQp2FlzFYyahNWcqysJ_U8fz8RSXqFA"
           />
-          <h1 className="text-2xl font-bold text-[#3E2723] mb-1">Jal Seva</h1>
-          <p className="text-sm text-[#3E2723]/80">Fresh water, delivered to your door</p>
+          <h1 className="text-2xl font-bold text-[#3E2723] mb-1">{tr.brand_name}</h1>
+          <p className="text-sm text-[#3E2723]/80">{tr.brand_tagline}</p>
         </div>
 
         <form onSubmit={handleSignup} className="w-full space-y-4">
           <h2 className="text-lg font-bold text-[#3E2723] text-center border-b border-[#3E2723]/20 pb-2">
-            Create an Account
+            {tr.signup_title}
           </h2>
 
           {/* Full Name */}
           <div>
-            <label className="block text-sm font-semibold text-[#3E2723] mb-1">Full Name</label>
+            <label className="block text-sm font-semibold text-[#3E2723] mb-1">{tr.signup_full_name}</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-4 py-3 bg-[#FFFFFF] border border-[#3E2723] rounded-lg focus:ring-2 focus:ring-[#4FC3F7] focus:border-[#4FC3F7] transition-all text-base outline-none text-[#3E2723] placeholder-[#3E2723]/50"
-              placeholder="John Doe"
+              placeholder={tr.signup_full_name_placeholder}
             />
             {errors.name && (
               <span className="text-xs text-red-600 mt-1 block font-semibold">* {errors.name}</span>
@@ -137,7 +147,7 @@ function Signup() {
 
           {/* Phone Number */}
           <div>
-            <label className="block text-sm font-semibold text-[#3E2723] mb-1">Phone Number</label>
+            <label className="block text-sm font-semibold text-[#3E2723] mb-1">{tr.signup_phone}</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#3E2723] border-r border-[#3E2723]/30 pr-2">
                 +91
@@ -158,13 +168,13 @@ function Signup() {
 
           {/* Area / Locality */}
           <div>
-            <label className="block text-sm font-semibold text-[#3E2723] mb-1">Area / Locality</label>
+            <label className="block text-sm font-semibold text-[#3E2723] mb-1">{tr.signup_area}</label>
             <input
               type="text"
               value={area}
               onChange={(e) => setArea(e.target.value)}
               className="w-full px-4 py-3 bg-[#FFFFFF] border border-[#3E2723] rounded-lg focus:ring-2 focus:ring-[#4FC3F7] focus:border-[#4FC3F7] transition-all text-base outline-none text-[#3E2723] placeholder-[#3E2723]/50"
-              placeholder="e.g. Shivajinagar"
+              placeholder={tr.signup_area_placeholder}
             />
             {errors.area && (
               <span className="text-xs text-red-600 mt-1 block font-semibold">* {errors.area}</span>
@@ -173,7 +183,7 @@ function Signup() {
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-semibold text-[#3E2723] mb-1">Password</label>
+            <label className="block text-sm font-semibold text-[#3E2723] mb-1">{tr.signup_password}</label>
             <input
               type="password"
               value={password}
@@ -188,7 +198,7 @@ function Signup() {
 
           {/* Confirm Password */}
           <div>
-            <label className="block text-sm font-semibold text-[#3E2723] mb-1">Confirm Password</label>
+            <label className="block text-sm font-semibold text-[#3E2723] mb-1">{tr.signup_confirm_password}</label>
             <input
               type="password"
               value={confirmPassword}
@@ -227,7 +237,7 @@ function Signup() {
             {loading ? (
               <div className="w-5 h-5 border-2 border-[#FFFFFF]/30 border-t-[#FFFFFF] rounded-full animate-spin" />
             ) : (
-              'Create Account'
+              tr.signup_btn
             )}
           </button>
         </form>
@@ -235,12 +245,12 @@ function Signup() {
         {/* Login link */}
         <div className="mt-6 text-center">
           <p className="text-sm text-[#3E2723]">
-            Already have an account?{' '}
+            {tr.signup_have_account}{' '}
             <button
               onClick={() => navigate('/login')}
               className="font-bold hover:underline text-[#4FC3F7] outline-none"
             >
-              Login
+              {tr.signup_login}
             </button>
           </p>
         </div>
@@ -249,6 +259,5 @@ function Signup() {
     </div>
   );
 }
-
 
 export default Signup;

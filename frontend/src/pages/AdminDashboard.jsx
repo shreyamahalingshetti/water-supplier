@@ -512,52 +512,234 @@ const TodaysOrdersView = ({ orders: allOrders, onMarkDelivered }) => {
    ALL ORDERS TABLE
 ══════════════════════════════════════════════════════════════ */
 const AllOrdersView = ({ orders, onMarkDelivered }) => {
-  const [search, setSearch] = useState('');
+  const [search, setSearch]             = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [areaFilter, setAreaFilter]     = useState('all');
+  const [canSizeFilter, setCanSizeFilter] = useState('all');
+  const [timeSlotFilter, setTimeSlotFilter] = useState('all');
+  const [fromDate, setFromDate]         = useState('');
+  const [toDate, setToDate]             = useState('');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  // Extract unique areas dynamically from orders list
+  const uniqueAreas = useMemo(() => {
+    const areas = new Set();
+    orders.forEach(o => {
+      if (o.area && o.area !== '—') areas.add(o.area);
+    });
+    return Array.from(areas).sort();
+  }, [orders]);
+
+  const clearAllFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setAreaFilter('all');
+    setCanSizeFilter('all');
+    setTimeSlotFilter('all');
+    setFromDate('');
+    setToDate('');
+  };
 
   const filtered = useMemo(() => orders.filter(o => {
-    const matchSearch = !search || o.customer.toLowerCase().includes(search.toLowerCase()) || o.id.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === 'all' || o.status === statusFilter;
-    return matchSearch && matchStatus;
-  }), [orders, search, statusFilter]);
+    const matchSearch = !search ||
+      o.customer.toLowerCase().includes(search.toLowerCase()) ||
+      o.id.toString().toLowerCase().includes(search.toLowerCase());
+
+    const matchStatus  = statusFilter === 'all' || o.status === statusFilter;
+    const matchArea    = areaFilter === 'all' || o.area === areaFilter;
+    const matchCanSize = canSizeFilter === 'all' || (o.can_size || o.canSize || '20L') === canSizeFilter;
+    const matchTimeSlot = timeSlotFilter === 'all' || o.timeSlot === timeSlotFilter;
+
+    let matchFrom = true;
+    if (fromDate) {
+      matchFrom = o.date >= fromDate;
+    }
+
+    let matchTo = true;
+    if (toDate) {
+      matchTo = o.date <= toDate;
+    }
+
+    return matchSearch && matchStatus && matchArea && matchCanSize && matchTimeSlot && matchFrom && matchTo;
+  }), [orders, search, statusFilter, areaFilter, canSizeFilter, timeSlotFilter, fromDate, toDate]);
 
   return (
     <div>
       <SectionTitle sub="All orders history">All Orders</SectionTitle>
 
-      {/* Filters bar */}
-      <div className="flex flex-wrap gap-3 mb-5">
-        <div className="relative flex-1 min-w-48">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.brownLt} strokeWidth="2"
-            className="absolute left-3 top-1/2 -translate-y-1/2">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <input
-            id="all-orders-search"
-            type="text"
-            placeholder="Search by name or order ID…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl text-sm outline-none"
-            style={{ border: `1.5px solid #E0E0E0`, color: C.brown, background: C.white, fontFamily: 'Inter, sans-serif' }}
-            onFocus={e => e.target.style.borderColor = C.blue}
-            onBlur={e => e.target.style.borderColor = '#E0E0E0'}
-          />
-        </div>
-        <select
-          id="all-orders-status-filter"
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-          className="px-3 py-2 rounded-xl text-sm outline-none"
-          style={{ border: `1.5px solid #E0E0E0`, color: C.brown, background: C.white, fontFamily: 'Inter, sans-serif' }}
-          onFocus={e => e.target.style.borderColor = C.blue}
-          onBlur={e => e.target.style.borderColor = '#E0E0E0'}
+      {/* Mobile filter toggle */}
+      <div className="flex lg:hidden justify-between items-center gap-3 mb-4">
+        <button
+          onClick={() => setShowMobileFilters(!showMobileFilters)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all shadow-sm"
+          style={{ background: C.blue }}
         >
-          <option value="all">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="delivered">Delivered</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          {showMobileFilters ? 'Hide Filters' : 'Show Filters'}
+        </button>
+        {(search || statusFilter !== 'all' || fromDate || toDate || areaFilter !== 'all' || canSizeFilter !== 'all' || timeSlotFilter !== 'all') && (
+          <button
+            onClick={clearAllFilters}
+            className="text-xs font-bold underline transition-colors"
+            style={{ color: C.brown }}
+          >
+            Clear All
+          </button>
+        )}
+      </div>
+
+      {/* Filter panel */}
+      <div className={`mb-6 p-4 rounded-2xl border transition-all duration-300 ${showMobileFilters ? 'block' : 'hidden lg:block'}`}
+        style={{ background: C.white, borderColor: '#F0F0F0' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3.5 items-end">
+          {/* Search */}
+          <div className="flex flex-col gap-1.5 md:col-span-2">
+            <label className="text-xs font-bold uppercase tracking-wider" style={{ color: C.brownLt }}>Search</label>
+            <div className="relative">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.brownLt} strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                id="all-orders-search"
+                type="text"
+                placeholder="Name or order ID…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl text-sm outline-none border transition-all"
+                style={{ borderColor: '#E0E0E0', color: C.brown, background: C.white, fontFamily: 'Inter, sans-serif' }}
+                onFocus={e => e.target.style.borderColor = C.blue}
+                onBlur={e => e.target.style.borderColor = '#E0E0E0'}
+              />
+            </div>
+          </div>
+
+          {/* Status */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider" style={{ color: C.brownLt }}>Status</label>
+            <select
+              id="all-orders-status-filter"
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl text-sm outline-none border transition-all"
+              style={{ borderColor: '#E0E0E0', color: C.brown, background: C.white, fontFamily: 'Inter, sans-serif' }}
+              onFocus={e => e.target.style.borderColor = C.blue}
+              onBlur={e => e.target.style.borderColor = '#E0E0E0'}
+            >
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          {/* Area */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider" style={{ color: C.brownLt }}>Area/Locality</label>
+            <select
+              id="all-orders-area-filter"
+              value={areaFilter}
+              onChange={e => setAreaFilter(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl text-sm outline-none border transition-all"
+              style={{ borderColor: '#E0E0E0', color: C.brown, background: C.white, fontFamily: 'Inter, sans-serif' }}
+              onFocus={e => e.target.style.borderColor = C.blue}
+              onBlur={e => e.target.style.borderColor = '#E0E0E0'}
+            >
+              <option value="all">All Areas</option>
+              {uniqueAreas.map(area => (
+                <option key={area} value={area}>{area}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Can Size */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider" style={{ color: C.brownLt }}>Can Size</label>
+            <select
+              id="all-orders-cansize-filter"
+              value={canSizeFilter}
+              onChange={e => setCanSizeFilter(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl text-sm outline-none border transition-all"
+              style={{ borderColor: '#E0E0E0', color: C.brown, background: C.white, fontFamily: 'Inter, sans-serif' }}
+              onFocus={e => e.target.style.borderColor = C.blue}
+              onBlur={e => e.target.style.borderColor = '#E0E0E0'}
+            >
+              <option value="all">All Sizes</option>
+              <option value="20L">20L</option>
+              <option value="15L">15L</option>
+              <option value="10L">10L</option>
+              <option value="5L">5L</option>
+            </select>
+          </div>
+
+          {/* Time Slot */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider" style={{ color: C.brownLt }}>Time Slot</label>
+            <select
+              id="all-orders-timeslot-filter"
+              value={timeSlotFilter}
+              onChange={e => setTimeSlotFilter(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl text-sm outline-none border transition-all"
+              style={{ borderColor: '#E0E0E0', color: C.brown, background: C.white, fontFamily: 'Inter, sans-serif' }}
+              onFocus={e => e.target.style.borderColor = C.blue}
+              onBlur={e => e.target.style.borderColor = '#E0E0E0'}
+            >
+              <option value="all">All Slots</option>
+              <option value="Morning 7am-10am">Morning 7am-10am</option>
+              <option value="Afternoon 12pm-3pm">Afternoon 12pm-3pm</option>
+              <option value="Evening 5pm-8pm">Evening 5pm-8pm</option>
+            </select>
+          </div>
+
+          {/* From Date */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider" style={{ color: C.brownLt }}>From Date</label>
+            <input
+              id="all-orders-from-date"
+              type="date"
+              value={fromDate}
+              onChange={e => setFromDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl text-sm outline-none border transition-all"
+              style={{ borderColor: '#E0E0E0', color: C.brown, background: C.white, fontFamily: 'Inter, sans-serif' }}
+              onFocus={e => e.target.style.borderColor = C.blue}
+              onBlur={e => e.target.style.borderColor = '#E0E0E0'}
+            />
+          </div>
+
+          {/* To Date */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider" style={{ color: C.brownLt }}>To Date</label>
+            <input
+              id="all-orders-to-date"
+              type="date"
+              value={toDate}
+              onChange={e => setToDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl text-sm outline-none border transition-all"
+              style={{ borderColor: '#E0E0E0', color: C.brown, background: C.white, fontFamily: 'Inter, sans-serif' }}
+              onFocus={e => e.target.style.borderColor = C.blue}
+              onBlur={e => e.target.style.borderColor = '#E0E0E0'}
+            />
+          </div>
+
+          {/* Clear Filters Button */}
+          <div className="flex justify-end col-span-full xl:col-span-1">
+            <button
+              onClick={clearAllFilters}
+              disabled={!(search || statusFilter !== 'all' || fromDate || toDate || areaFilter !== 'all' || canSizeFilter !== 'all' || timeSlotFilter !== 'all')}
+              className="w-full py-2 px-4 rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed border"
+              style={{
+                background: C.white,
+                color: C.brown,
+                borderColor: '#E0E0E0'
+              }}
+              onMouseEnter={e => { if (!e.currentTarget.disabled) { e.currentTarget.style.background = C.blueBg; e.currentTarget.style.color = C.blueDark; e.currentTarget.style.borderColor = C.blue; } }}
+              onMouseLeave={e => { e.currentTarget.style.background = C.white; e.currentTarget.style.color = C.brown; e.currentTarget.style.borderColor = '#E0E0E0'; }}
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Table */}
@@ -589,7 +771,7 @@ const AllOrdersView = ({ orders, onMarkDelivered }) => {
                   onMouseEnter={e => e.currentTarget.style.background = C.blueBg}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <td className="px-4 py-3 font-mono text-xs font-semibold" style={{ color: C.blue }}>{o.id}</td>
+                  <td className="px-4 py-3 font-mono text-xs font-semibold" style={{ color: C.blue }}>#{o.id}</td>
                   <td className="px-4 py-3 font-semibold whitespace-nowrap" style={{ color: C.brown }}>{o.customer}</td>
                   <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: C.brownLt }}>{o.area}</td>
                   <td className="px-4 py-3 font-bold" style={{ color: C.brown }}>{o.cans} {o.can_size ? `(${o.can_size})` : ''}</td>
@@ -710,7 +892,7 @@ const RecurringView = ({ recurringOrders }) => (
                 <td className="px-4 py-3 text-xs" style={{ color: C.brownLt }}>{r.area}</td>
                 <td className="px-4 py-3 font-bold" style={{ color: C.brown }}>{r.quantity}</td>
                 <td className="px-4 py-3 text-xs" style={{ color: C.brownLt }}>Every {r.frequency_days} days</td>
-                <td className="px-4 py-3 text-xs" style={{ color: C.brownLt }}>{r.next_delivery_date || '—'}</td>
+                <td className="px-4 py-3 text-xs" style={{ color: C.brownLt }}>{r.next_delivery || r.next_delivery_date || '—'}</td>
                 <td className="px-4 py-3">
                   <span className="px-2.5 py-1 rounded-full text-xs font-bold"
                     style={{ background: r.is_active ? '#E8F5E9' : '#FFF3E0', color: r.is_active ? '#2E7D32' : '#E65100' }}>
@@ -729,7 +911,7 @@ const RecurringView = ({ recurringOrders }) => (
 /* ══════════════════════════════════════════════════════════════
    DISRUPTIONS VIEW
 ══════════════════════════════════════════════════════════════ */
-const DisruptionsView = ({ disruptions, onAnnounce }) => {
+const DisruptionsView = ({ disruptions, onAnnounce, onDelete }) => {
   const [showForm,      setShowForm]      = useState(false);
   const [msg,           setMsg]           = useState('');
   const [selectedDate,  setSelectedDate]  = useState(() => new Date().toISOString().slice(0, 10));
@@ -829,6 +1011,20 @@ const DisruptionsView = ({ disruptions, onAnnounce }) => {
                   </div>
                 )}
               </div>
+              {/* Delete button */}
+              <button
+                onClick={() => onDelete && onDelete(s.id)}
+                title="Delete disruption"
+                className="ml-2 p-1.5 rounded-lg hover:bg-red-100 transition-colors shrink-0"
+                style={{ color: '#c62828' }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6"/><path d="M14 11v6"/>
+                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                </svg>
+              </button>
             </div>
           ))}
         </div>
@@ -1089,23 +1285,25 @@ export default function AdminDashboard() {
     setLoading(true);
     setFetchError('');
     try {
-      const [todayRes, allRes, custRes, recRes, notifRes] = await Promise.all([
+      const [todayRes, allRes, custRes, recRes, notifRes, disruptRes] = await Promise.all([
         fetch(`${API_URL}/orders/today`,           { headers: getHeaders() }),
         fetch(`${API_URL}/orders`,                 { headers: getHeaders() }),
         fetch(`${API_URL}/users/customers`,        { headers: getHeaders() }),
         fetch(`${API_URL}/recurring-orders`,       { headers: getHeaders() }),
         fetch(`${API_URL}/notifications`,          { headers: getHeaders() }),
+        fetch(`${API_URL}/disruptions`,            { headers: getHeaders() }),
       ]);
 
       if ([todayRes, allRes, custRes, recRes, notifRes].some(r => r.status === 401)) {
         handle401(); return;
       }
 
-      if (todayRes.ok)  { const d = await todayRes.json();  setOrdersToday(d.data || d || []); }
-      if (allRes.ok)    { const d = await allRes.json();    setAllOrders(d.data || d || []); }
-      if (custRes.ok)   { const d = await custRes.json();   setCustomers(d.data || d || []); }
-      if (recRes.ok)    { const d = await recRes.json();    setRecurringOrders(d.data || d || []); }
-      if (notifRes.ok)  { const d = await notifRes.json();  setNotifications(d.data || d || []); }
+      if (todayRes.ok)   { const d = await todayRes.json();   setOrdersToday(d.data || d || []); }
+      if (allRes.ok)     { const d = await allRes.json();     setAllOrders(d.data || d || []); }
+      if (custRes.ok)    { const d = await custRes.json();    setCustomers(d.data || d || []); }
+      if (recRes.ok)     { const d = await recRes.json();     setRecurringOrders(d.data || d || []); }
+      if (notifRes.ok)   { const d = await notifRes.json();   setNotifications(d.data || d || []); }
+      if (disruptRes.ok) { const d = await disruptRes.json(); setDisruptions(d.data || d || []); }
     } catch (err) {
       setFetchError('Failed to load dashboard data. Please refresh.');
     } finally {
@@ -1154,12 +1352,25 @@ export default function AdminDashboard() {
       const d = await res.json();
       throw new Error(d.message || 'Failed to announce disruption.');
     }
-    // Refresh disruptions — try dedicated endpoint, fall back to appending locally
+    // Refresh disruptions list from server
+    const listRes = await fetch(`${API_URL}/disruptions`, { headers: getHeaders() });
+    if (listRes.ok) { const d = await listRes.json(); setDisruptions(d.data || d || []); }
+  };
+
+  /* ── Delete disruption ── */
+  const handleDeleteDisruption = async (id) => {
+    if (!window.confirm('Delete this disruption announcement?')) return;
     try {
-      const listRes = await fetch(`${API_URL}/disruptions`, { headers: getHeaders() });
-      if (listRes.ok) { const d = await listRes.json(); setDisruptions(d.data || d || []); }
-    } catch {
-      setDisruptions(prev => [{ id: Date.now(), message, disruption_date, created_at: new Date().toISOString() }, ...prev]);
+      const res = await fetch(`${API_URL}/disruptions/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+      });
+      if (res.status === 401) { handle401(); return; }
+      if (!res.ok) throw new Error('Failed to delete disruption.');
+      // Remove from local state immediately
+      setDisruptions(prev => prev.filter(d => d.id !== id));
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -1227,7 +1438,7 @@ export default function AdminDashboard() {
       case 'recurring':
         return <RecurringView recurringOrders={recurringOrders} />;
       case 'disruptions':
-        return <DisruptionsView disruptions={disruptions} onAnnounce={handleAnnounce} />;
+        return <DisruptionsView disruptions={disruptions} onAnnounce={handleAnnounce} onDelete={handleDeleteDisruption} />;
       case 'notifications':
         return <NotificationsView notifications={notifications} onMarkRead={markNotifRead} />;
       default:

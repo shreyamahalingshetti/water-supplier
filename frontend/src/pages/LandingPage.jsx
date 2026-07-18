@@ -1,29 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext.jsx';
+import { translations } from '../utils/translations.js';
 
 /* ─────────────────────────────────────────────
    SVG Illustrations & Icons (inline, no deps)
 ───────────────────────────────────────────── */
 const WaterCanIllustration = () => (
   <svg viewBox="0 0 320 400" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-xs mx-auto drop-shadow-2xl">
-    {/* Can body */}
     <rect x="60" y="100" width="200" height="260" rx="20" fill="#4FC3F7" opacity="0.15" />
     <rect x="60" y="100" width="200" height="260" rx="20" stroke="#4FC3F7" strokeWidth="3" fill="white" />
-    {/* Water fill */}
     <clipPath id="canClip"><rect x="60" y="100" width="200" height="260" rx="20" /></clipPath>
     <rect x="60" y="240" width="200" height="120" fill="#4FC3F7" opacity="0.35" clipPath="url(#canClip)" />
-    {/* Wave in water */}
     <path d="M60 245 Q100 235 140 245 Q180 255 220 245 Q250 238 260 245 L260 260 L60 260 Z" fill="#4FC3F7" opacity="0.5" clipPath="url(#canClip)" />
-    {/* Handle */}
     <path d="M200 120 Q250 120 250 160 Q250 200 200 200" stroke="#4FC3F7" strokeWidth="14" strokeLinecap="round" fill="none" />
-    {/* Cap */}
     <rect x="110" y="70" width="100" height="40" rx="10" fill="#4FC3F7" />
     <rect x="130" y="55" width="60" height="20" rx="8" fill="#0288D1" />
-    {/* Label */}
     <rect x="85" y="145" width="150" height="80" rx="10" fill="#4FC3F7" opacity="0.15" stroke="#4FC3F7" strokeWidth="1.5" />
     <text x="160" y="178" textAnchor="middle" fill="#8D6E63" fontSize="14" fontWeight="bold" fontFamily="Inter,sans-serif">JAL SEVA</text>
     <text x="160" y="198" textAnchor="middle" fill="#8D6E63" fontSize="11" fontFamily="Inter,sans-serif">20 Litres</text>
-    {/* Droplets decoration */}
     <ellipse cx="85" cy="310" rx="8" ry="12" fill="#4FC3F7" opacity="0.5" />
     <ellipse cx="235" cy="320" rx="6" ry="9" fill="#4FC3F7" opacity="0.4" />
     <ellipse cx="50" cy="270" rx="5" ry="7" fill="#4FC3F7" opacity="0.3" />
@@ -48,8 +43,27 @@ const WaveBackground = () => (
   </div>
 );
 
+/* ─── Language Toggle Button ─── */
+const LangToggle = () => {
+  const { language, toggleLanguage } = useLanguage();
+  const tr = translations[language];
+  return (
+    <button
+      onClick={toggleLanguage}
+      title="Switch language / ಭಾಷೆ ಬದಲಿಸಿ"
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 border-water-blue text-water-blue text-xs font-bold hover:bg-water-blue hover:text-white transition-all duration-200 shrink-0"
+    >
+      🌐 <span>{tr.lang_current}</span>
+      <span className="opacity-60">|</span>
+      <span className="opacity-80">{tr.lang_toggle}</span>
+    </button>
+  );
+};
+
 /* ─── Navbar ─── */
 const Navbar = () => {
+  const { language } = useLanguage();
+  const tr = translations[language];
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -60,10 +74,10 @@ const Navbar = () => {
   }, []);
 
   const navLinks = [
-    { label: 'Home', href: '#hero' },
-    { label: 'How It Works', href: '#how-it-works' },
-    { label: 'Products', href: '#products' },
-    { label: 'Contact', href: '#footer' },
+    { label: tr.nav_home, href: '#hero' },
+    { label: tr.nav_how_it_works, href: '#how-it-works' },
+    { label: tr.nav_products, href: '#products' },
+    { label: tr.nav_contact, href: '#footer' },
   ];
 
   const scrollTo = (href) => {
@@ -87,10 +101,10 @@ const Navbar = () => {
           </div>
 
           {/* Desktop nav links */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => (
               <button
-                key={link.label}
+                key={link.href}
                 onClick={() => scrollTo(link.href)}
                 className="text-warm-brown text-sm font-medium hover:text-water-blue transition-colors duration-200 relative group"
               >
@@ -100,19 +114,20 @@ const Navbar = () => {
             ))}
           </div>
 
-          {/* Desktop CTA buttons */}
+          {/* Desktop CTA + Lang toggle */}
           <div className="hidden md:flex items-center gap-3">
+            <LangToggle />
             <Link
               to="/login"
               className="px-4 py-2 text-sm font-semibold text-water-blue border-2 border-water-blue rounded-full hover:bg-water-blue hover:text-white transition-all duration-200"
             >
-              Login
+              {tr.nav_login}
             </Link>
             <Link
               to="/place-order"
               className="px-5 py-2 text-sm font-semibold text-white bg-water-blue rounded-full hover:bg-water-blue-dark shadow-md hover:shadow-lg transition-all duration-200"
             >
-              Order Now
+              {tr.nav_order_now}
             </Link>
           </div>
 
@@ -136,16 +151,17 @@ const Navbar = () => {
           <div className="md:hidden py-4 border-t border-water-blue/20 space-y-3">
             {navLinks.map((link) => (
               <button
-                key={link.label}
+                key={link.href}
                 onClick={() => scrollTo(link.href)}
                 className="block w-full text-left px-2 py-2 text-warm-brown font-medium hover:text-water-blue transition-colors"
               >
                 {link.label}
               </button>
             ))}
-            <div className="flex gap-3 pt-2">
-              <Link to="/login" className="flex-1 text-center px-4 py-2 text-sm font-semibold text-water-blue border-2 border-water-blue rounded-full hover:bg-water-blue hover:text-white transition-all">Login</Link>
-              <Link to="/place-order" className="flex-1 text-center px-4 py-2 text-sm font-semibold text-white bg-water-blue rounded-full hover:bg-water-blue-dark transition-all">Order Now</Link>
+            <div className="flex gap-3 pt-2 flex-wrap">
+              <LangToggle />
+              <Link to="/login" className="flex-1 text-center px-4 py-2 text-sm font-semibold text-water-blue border-2 border-water-blue rounded-full hover:bg-water-blue hover:text-white transition-all">{tr.nav_login}</Link>
+              <Link to="/place-order" className="flex-1 text-center px-4 py-2 text-sm font-semibold text-white bg-water-blue rounded-full hover:bg-water-blue-dark transition-all">{tr.nav_order_now}</Link>
             </div>
           </div>
         )}
@@ -155,207 +171,178 @@ const Navbar = () => {
 };
 
 /* ─── Hero Section ─── */
-const HeroSection = () => (
-  <section id="hero" className="relative min-h-screen flex items-center bg-white pt-16 overflow-hidden">
-    {/* Decorative circles */}
-    <div className="absolute top-20 right-0 w-96 h-96 rounded-full bg-water-blue opacity-5 -translate-y-1/4 translate-x-1/4" />
-    <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-water-blue opacity-8 translate-y-1/3 -translate-x-1/4" />
-    <WaveBackground />
+const HeroSection = () => {
+  const { language } = useLanguage();
+  const tr = translations[language];
+  return (
+    <section id="hero" className="relative min-h-screen flex items-center bg-white pt-16 overflow-hidden">
+      <div className="absolute top-20 right-0 w-96 h-96 rounded-full bg-water-blue opacity-5 -translate-y-1/4 translate-x-1/4" />
+      <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-water-blue opacity-8 translate-y-1/3 -translate-x-1/4" />
+      <WaveBackground />
 
-    <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-      <div className="grid lg:grid-cols-2 gap-12 items-center">
-        {/* Text content */}
-        <div className="space-y-8">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-water-blue/10 border border-water-blue/30 text-water-blue text-sm font-semibold px-4 py-2 rounded-full">
-            <DropletIcon size={16} />
-            <span>Trusted Local Water Supplier</span>
-          </div>
-
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-warm-brown leading-tight" style={{ fontFamily: 'Inter, sans-serif' }}>
-            Pure Water.{' '}
-            <span className="text-water-blue relative">
-              Delivered
-              <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none">
-                <path d="M0 8 Q75 0 150 8 Q225 16 300 8" stroke="#4FC3F7" strokeWidth="3" strokeLinecap="round" fill="none" />
-              </svg>
-            </span>{' '}
-            to You.
-          </h1>
-
-          <p className="text-lg text-warm-brown/70 leading-relaxed max-w-lg">
-            Your trusted local water supplier — fresh 20L cans delivered right to your doorstep. Safe, hygienic, and affordable.
-          </p>
-
-          <div className="flex flex-wrap gap-4">
-            <Link
-              to="/place-order"
-              className="group inline-flex items-center gap-2 px-8 py-4 text-white font-bold bg-water-blue rounded-full shadow-lg shadow-water-blue/30 hover:bg-water-blue-dark hover:shadow-xl hover:shadow-water-blue/40 hover:-translate-y-0.5 transition-all duration-200"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
-              Order Now
-            </Link>
-            <button
-              onClick={() => document.querySelector('#how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-              className="inline-flex items-center gap-2 px-8 py-4 text-water-blue font-bold border-2 border-water-blue rounded-full hover:bg-water-blue/5 hover:-translate-y-0.5 transition-all duration-200"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" /></svg>
-              How It Works
-            </button>
-          </div>
-
-          {/* Trust badges */}
-          <div className="flex flex-wrap gap-4 pt-4">
-            {[
-              { icon: '✓', text: '100% Pure & Safe' },
-              { icon: '🚚', text: 'Next Day Delivery' },
-              { icon: '💧', text: 'Affordable Prices' },
-            ].map(({ icon, text }) => (
-              <div key={text} className="flex items-center gap-2 bg-white border border-water-blue/20 rounded-full px-4 py-2 shadow-sm hover:shadow-md hover:border-water-blue/50 transition-all duration-200">
-                <span className="text-base">{icon}</span>
-                <span className="text-warm-brown text-sm font-semibold">{text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Illustration */}
-        <div className="relative flex justify-center items-center">
-          {/* Glow behind can */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-64 h-64 rounded-full bg-water-blue opacity-10 blur-3xl" />
-          </div>
-          <div className="relative w-72 lg:w-80 animate-[float_4s_ease-in-out_infinite]">
-            <WaterCanIllustration />
-          </div>
-          {/* Floating stat cards */}
-          <div className="absolute top-4 -left-4 lg:-left-8 bg-white rounded-2xl shadow-xl p-3 border border-water-blue/15 animate-[float_5s_ease-in-out_infinite_0.5s]">
-            <p className="text-xs text-warm-brown/60 font-medium">Happy Customers</p>
-            <p className="text-2xl font-extrabold text-warm-brown">2,500+</p>
-          </div>
-          <div className="absolute bottom-8 -right-2 lg:-right-6 bg-white rounded-2xl shadow-xl p-3 border border-water-blue/15 animate-[float_5s_ease-in-out_infinite_1s]">
-            <p className="text-xs text-warm-brown/60 font-medium">Cans Delivered</p>
-            <p className="text-2xl font-extrabold text-water-blue">50K+</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-);
-
-/* ─── How It Works ─── */
-const steps = [
-  {
-    number: '01',
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4FC3F7" strokeWidth="2">
-        <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
-        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-      </svg>
-    ),
-    title: 'Place Your Order',
-    desc: 'Choose your can size and quantity online. Fill in your delivery address and preferred time slot.',
-  },
-  {
-    number: '02',
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4FC3F7" strokeWidth="2">
-        <rect x="1" y="3" width="15" height="13" rx="2" />
-        <path d="M16 8h4l3 3v5h-7V8z" />
-        <circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" />
-      </svg>
-    ),
-    title: 'We Deliver',
-    desc: 'Our trained delivery team brings fresh cans right to your doorstep — on schedule, every time.',
-  },
-  {
-    number: '03',
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4FC3F7" strokeWidth="2">
-        <path d="M12 2L6 10C4 13 4 18 8 20.5C10 21.7 14 21.7 16 20.5C20 18 20 13 18 10L12 2Z" />
-      </svg>
-    ),
-    title: 'Enjoy Pure Water',
-    desc: 'Drink clean, safe, and refreshing water every day with zero hassle and zero compromise.',
-  },
-];
-
-const HowItWorksSection = () => (
-  <section id="how-it-works" className="py-24 bg-white relative overflow-hidden">
-    <div className="absolute inset-0 opacity-3">
-      <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
-        <defs><pattern id="grid" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="0.5" fill="#4FC3F7" /></pattern></defs>
-        <rect width="100" height="100" fill="url(#grid)" />
-      </svg>
-    </div>
-
-    <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Section header */}
-      <div className="text-center mb-16">
-        <div className="inline-flex items-center gap-2 bg-water-blue/10 text-water-blue text-sm font-semibold px-4 py-2 rounded-full mb-4">
-          <DropletIcon size={16} />
-          Simple Process
-        </div>
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-warm-brown mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
-          How It Works
-        </h2>
-        <p className="text-warm-brown/60 max-w-xl mx-auto text-lg">
-          Getting pure water delivered to you is as easy as 1-2-3
-        </p>
-      </div>
-
-      {/* Steps */}
-      <div className="relative flex flex-col lg:flex-row items-center lg:items-start gap-8 lg:gap-0">
-        {steps.map((step, i) => (
-          <React.Fragment key={step.number}>
-            <div className="flex-1 flex flex-col items-center text-center group px-4">
-              {/* Number + icon circle */}
-              <div className="relative mb-6">
-                <div className="w-20 h-20 rounded-full bg-water-blue/10 border-2 border-water-blue/30 flex items-center justify-center group-hover:bg-water-blue/20 group-hover:border-water-blue group-hover:scale-110 transition-all duration-300 shadow-lg shadow-water-blue/10">
-                  {step.icon}
-                </div>
-                <div className="absolute -top-2 -right-2 w-7 h-7 bg-water-blue text-white text-xs font-extrabold rounded-full flex items-center justify-center shadow-md">
-                  {i + 1}
-                </div>
-              </div>
-              <h3 className="text-xl font-bold text-warm-brown mb-3">{step.title}</h3>
-              <p className="text-warm-brown/60 text-sm leading-relaxed max-w-xs">{step.desc}</p>
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="space-y-8">
+            <div className="inline-flex items-center gap-2 bg-water-blue/10 border border-water-blue/30 text-water-blue text-sm font-semibold px-4 py-2 rounded-full">
+              <DropletIcon size={16} />
+              <span>{tr.hero_badge}</span>
             </div>
 
-            {/* Arrow between steps */}
-            {i < steps.length - 1 && (
-              <div className="hidden lg:flex items-center justify-center w-16 mt-8">
-                <svg width="48" height="24" viewBox="0 0 48 24" fill="none">
-                  <path d="M0 12 Q12 4 24 12 Q36 20 48 12" stroke="#4FC3F7" strokeWidth="2" strokeLinecap="round" fill="none" strokeDasharray="4 2" />
-                  <path d="M40 6 L48 12 L40 18" stroke="#4FC3F7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-warm-brown leading-tight" style={{ fontFamily: 'Inter, sans-serif' }}>
+              {tr.hero_title_1}{' '}
+              <span className="text-water-blue relative">
+                {tr.hero_title_2}
+                <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none">
+                  <path d="M0 8 Q75 0 150 8 Q225 16 300 8" stroke="#4FC3F7" strokeWidth="3" strokeLinecap="round" fill="none" />
                 </svg>
-              </div>
-            )}
-          </React.Fragment>
-        ))}
+              </span>{' '}
+              {tr.hero_title_3}
+            </h1>
+
+            <p className="text-lg text-warm-brown/70 leading-relaxed max-w-lg">
+              {tr.hero_subtitle}
+            </p>
+
+            <div className="flex flex-wrap gap-4">
+              <Link
+                to="/place-order"
+                className="group inline-flex items-center gap-2 px-8 py-4 text-white font-bold bg-water-blue rounded-full shadow-lg shadow-water-blue/30 hover:bg-water-blue-dark hover:shadow-xl hover:shadow-water-blue/40 hover:-translate-y-0.5 transition-all duration-200"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
+                {tr.hero_order_now}
+              </Link>
+              <button
+                onClick={() => document.querySelector('#how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+                className="inline-flex items-center gap-2 px-8 py-4 text-water-blue font-bold border-2 border-water-blue rounded-full hover:bg-water-blue/5 hover:-translate-y-0.5 transition-all duration-200"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" /></svg>
+                {tr.hero_how_it_works}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-4 pt-4">
+              {[
+                { icon: '✓', key: 'hero_badge_pure' },
+                { icon: '🚚', key: 'hero_badge_delivery' },
+                { icon: '💧', key: 'hero_badge_price' },
+              ].map(({ icon, key }) => (
+                <div key={key} className="flex items-center gap-2 bg-white border border-water-blue/20 rounded-full px-4 py-2 shadow-sm hover:shadow-md hover:border-water-blue/50 transition-all duration-200">
+                  <span className="text-base">{icon}</span>
+                  <span className="text-warm-brown text-sm font-semibold">{tr[key]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative flex justify-center items-center">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-64 h-64 rounded-full bg-water-blue opacity-10 blur-3xl" />
+            </div>
+            <div className="relative w-72 lg:w-80 animate-[float_4s_ease-in-out_infinite]">
+              <WaterCanIllustration />
+            </div>
+            <div className="absolute top-4 -left-4 lg:-left-8 bg-white rounded-2xl shadow-xl p-3 border border-water-blue/15 animate-[float_5s_ease-in-out_infinite_0.5s]">
+              <p className="text-xs text-warm-brown/60 font-medium">{tr.hero_happy_customers}</p>
+              <p className="text-2xl font-extrabold text-warm-brown">2,500+</p>
+            </div>
+            <div className="absolute bottom-8 -right-2 lg:-right-6 bg-white rounded-2xl shadow-xl p-3 border border-water-blue/15 animate-[float_5s_ease-in-out_infinite_1s]">
+              <p className="text-xs text-warm-brown/60 font-medium">{tr.hero_cans_delivered}</p>
+              <p className="text-2xl font-extrabold text-water-blue">50K+</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+/* ─── How It Works ─── */
+const HowItWorksSection = () => {
+  const { language } = useLanguage();
+  const tr = translations[language];
+
+  const steps = [
+    {
+      icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4FC3F7" strokeWidth="2"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>),
+      title: tr.hiw_step1_title,
+      desc: tr.hiw_step1_desc,
+    },
+    {
+      icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4FC3F7" strokeWidth="2"><rect x="1" y="3" width="15" height="13" rx="2" /><path d="M16 8h4l3 3v5h-7V8z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>),
+      title: tr.hiw_step2_title,
+      desc: tr.hiw_step2_desc,
+    },
+    {
+      icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4FC3F7" strokeWidth="2"><path d="M12 2L6 10C4 13 4 18 8 20.5C10 21.7 14 21.7 16 20.5C20 18 20 13 18 10L12 2Z" /></svg>),
+      title: tr.hiw_step3_title,
+      desc: tr.hiw_step3_desc,
+    },
+  ];
+
+  return (
+    <section id="how-it-works" className="py-24 bg-white relative overflow-hidden">
+      <div className="absolute inset-0 opacity-3">
+        <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
+          <defs><pattern id="grid" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="0.5" fill="#4FC3F7" /></pattern></defs>
+          <rect width="100" height="100" fill="url(#grid)" />
+        </svg>
       </div>
 
-      {/* CTA */}
-      <div className="text-center mt-16">
-        <Link
-          to="/place-order"
-          className="inline-flex items-center gap-2 px-8 py-4 text-white font-bold bg-water-blue rounded-full shadow-lg shadow-water-blue/30 hover:bg-water-blue-dark hover:-translate-y-0.5 transition-all duration-200"
-        >
-          Start Ordering Today →
-        </Link>
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 bg-water-blue/10 text-water-blue text-sm font-semibold px-4 py-2 rounded-full mb-4">
+            <DropletIcon size={16} />
+            {tr.hiw_badge}
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-warm-brown mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+            {tr.hiw_title}
+          </h2>
+          <p className="text-warm-brown/60 max-w-xl mx-auto text-lg">
+            {tr.hiw_subtitle}
+          </p>
+        </div>
+
+        <div className="relative flex flex-col lg:flex-row items-center lg:items-start gap-8 lg:gap-0">
+          {steps.map((step, i) => (
+            <React.Fragment key={i}>
+              <div className="flex-1 flex flex-col items-center text-center group px-4">
+                <div className="relative mb-6">
+                  <div className="w-20 h-20 rounded-full bg-water-blue/10 border-2 border-water-blue/30 flex items-center justify-center group-hover:bg-water-blue/20 group-hover:border-water-blue group-hover:scale-110 transition-all duration-300 shadow-lg shadow-water-blue/10">
+                    {step.icon}
+                  </div>
+                  <div className="absolute -top-2 -right-2 w-7 h-7 bg-water-blue text-white text-xs font-extrabold rounded-full flex items-center justify-center shadow-md">
+                    {i + 1}
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-warm-brown mb-3">{step.title}</h3>
+                <p className="text-warm-brown/60 text-sm leading-relaxed max-w-xs">{step.desc}</p>
+              </div>
+              {i < steps.length - 1 && (
+                <div className="hidden lg:flex items-center justify-center w-16 mt-8">
+                  <svg width="48" height="24" viewBox="0 0 48 24" fill="none">
+                    <path d="M0 12 Q12 4 24 12 Q36 20 48 12" stroke="#4FC3F7" strokeWidth="2" strokeLinecap="round" fill="none" strokeDasharray="4 2" />
+                    <path d="M40 6 L48 12 L40 18" stroke="#4FC3F7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                  </svg>
+                </div>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+
+        <div className="text-center mt-16">
+          <Link
+            to="/place-order"
+            className="inline-flex items-center gap-2 px-8 py-4 text-white font-bold bg-water-blue rounded-full shadow-lg shadow-water-blue/30 hover:bg-water-blue-dark hover:-translate-y-0.5 transition-all duration-200"
+          >
+            {tr.hiw_cta}
+          </Link>
+        </div>
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 /* ─── Products Section ─── */
-const products = [
-  { size: '20L', price: '₹70', popular: true, desc: 'Most popular for families', color: '#4FC3F7' },
-  { size: '15L', price: '₹55', popular: false, desc: 'Great for small families', color: '#0288D1' },
-  { size: '10L', price: '₹40', popular: false, desc: 'Ideal for couples', color: '#4FC3F7' },
-  { size: '5L', price: '₹25', popular: false, desc: 'Perfect for individuals', color: '#0288D1' },
-];
-
 const CanSVG = ({ label }) => (
   <svg viewBox="0 0 100 130" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-20 h-24 mx-auto">
     <rect x="15" y="25" width="70" height="90" rx="8" fill="white" stroke="#4FC3F7" strokeWidth="2" />
@@ -369,280 +356,264 @@ const CanSVG = ({ label }) => (
   </svg>
 );
 
-const ProductsSection = () => (
-  <section id="products" className="py-24 bg-white relative">
-    {/* Top wave */}
-    <div className="absolute top-0 left-0 right-0 h-16 overflow-hidden">
-      <svg viewBox="0 0 1440 64" preserveAspectRatio="none" className="w-full h-full">
-        <path d="M0,0 Q360,64 720,32 Q1080,0 1440,48 L1440,64 L0,64 Z" fill="#F0F9FF" opacity="0.5" />
-      </svg>
-    </div>
+const ProductsSection = () => {
+  const { language } = useLanguage();
+  const tr = translations[language];
 
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-      <div className="text-center mb-16">
-        <div className="inline-flex items-center gap-2 bg-water-blue/10 text-water-blue text-sm font-semibold px-4 py-2 rounded-full mb-4">
-          <DropletIcon size={16} />
-          Our Products
-        </div>
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-warm-brown mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
-          Choose Your Can Size
-        </h2>
-        <p className="text-warm-brown/60 max-w-xl mx-auto">
-          From individuals to large families — we have the perfect size for everyone
-        </p>
+  const products = [
+    { size: '20L', price: '₹70', popular: true, descKey: 'products_desc_20l' },
+    { size: '15L', price: '₹55', popular: false, descKey: 'products_desc_15l' },
+    { size: '10L', price: '₹40', popular: false, descKey: 'products_desc_10l' },
+    { size: '5L',  price: '₹25', popular: false, descKey: 'products_desc_5l' },
+  ];
+
+  return (
+    <section id="products" className="py-24 bg-white relative">
+      <div className="absolute top-0 left-0 right-0 h-16 overflow-hidden">
+        <svg viewBox="0 0 1440 64" preserveAspectRatio="none" className="w-full h-full">
+          <path d="M0,0 Q360,64 720,32 Q1080,0 1440,48 L1440,64 L0,64 Z" fill="#F0F9FF" opacity="0.5" />
+        </svg>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {products.map((p) => (
-          <div
-            key={p.size}
-            className={`relative bg-white rounded-3xl border-2 p-6 flex flex-col items-center text-center shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group cursor-default
-              ${p.popular ? 'border-water-blue shadow-water-blue/20' : 'border-water-blue/20 hover:border-water-blue/60'}`}
-          >
-            {p.popular && (
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-water-blue text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-md whitespace-nowrap">
-                ⭐ Most Popular
-              </div>
-            )}
-            <CanSVG label={p.size} />
-            <h3 className="text-2xl font-extrabold text-warm-brown mt-4 mb-1">{p.size} Can</h3>
-            <p className="text-warm-brown/60 text-sm mb-4">{p.desc}</p>
-            <div className="text-3xl font-extrabold text-water-blue mb-6">{p.price}</div>
-            <Link
-              to="/place-order"
-              className={`w-full py-3 rounded-full text-sm font-bold transition-all duration-200
-                ${p.popular
-                  ? 'bg-water-blue text-white hover:bg-water-blue-dark shadow-md hover:shadow-lg'
-                  : 'border-2 border-water-blue text-water-blue hover:bg-water-blue hover:text-white'
-                }`}
-            >
-              Order Now
-            </Link>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 bg-water-blue/10 text-water-blue text-sm font-semibold px-4 py-2 rounded-full mb-4">
+            <DropletIcon size={16} />
+            {tr.products_badge}
           </div>
-        ))}
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-warm-brown mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+            {tr.products_title}
+          </h2>
+          <p className="text-warm-brown/60 max-w-xl mx-auto">
+            {tr.products_subtitle}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {products.map((p) => (
+            <div
+              key={p.size}
+              className={`relative bg-white rounded-3xl border-2 p-6 flex flex-col items-center text-center shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group cursor-default
+                ${p.popular ? 'border-water-blue shadow-water-blue/20' : 'border-water-blue/20 hover:border-water-blue/60'}`}
+            >
+              {p.popular && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-water-blue text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-md whitespace-nowrap">
+                  {tr.products_most_popular}
+                </div>
+              )}
+              <CanSVG label={p.size} />
+              <h3 className="text-2xl font-extrabold text-warm-brown mt-4 mb-1">{p.size} Can</h3>
+              <p className="text-warm-brown/60 text-sm mb-4">{tr[p.descKey]}</p>
+              <div className="text-3xl font-extrabold text-water-blue mb-6">{p.price}</div>
+              <Link
+                to="/place-order"
+                className={`w-full py-3 rounded-full text-sm font-bold transition-all duration-200
+                  ${p.popular
+                    ? 'bg-water-blue text-white hover:bg-water-blue-dark shadow-md hover:shadow-lg'
+                    : 'border-2 border-water-blue text-water-blue hover:bg-water-blue hover:text-white'
+                  }`}
+              >
+                {tr.products_order_now}
+              </Link>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 /* ─── Why Choose Us ─── */
-const features = [
-  {
-    icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
-    title: 'Local & Reliable',
-    desc: 'We are your neighbourhood water supplier. Always nearby, always on time.',
-  },
-  {
-    icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        <path d="M9 12l2 2 4-4" />
-      </svg>
-    ),
-    title: 'Hygienic & Safe',
-    desc: 'Every can is sealed, tested, and certified for purity. Your health is our priority.',
-  },
-  {
-    icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-        <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-      </svg>
-    ),
-    title: 'Regular Supply',
-    desc: 'Set up recurring orders and never run out of water. Subscribe and save.',
-  },
-  {
-    icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-      </svg>
-    ),
-    title: 'Customer First',
-    desc: 'Responsive support, flexible schedules, and a smile with every delivery.',
-  },
-];
+const WhyChooseUsSection = () => {
+  const { language } = useLanguage();
+  const tr = translations[language];
 
-const WhyChooseUsSection = () => (
-  <section className="py-24 bg-white relative overflow-hidden">
-    {/* Background accent */}
-    <div className="absolute inset-0 bg-gradient-to-br from-water-blue/5 via-white to-water-blue/3 pointer-events-none" />
+  const features = [
+    {
+      icon: (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>),
+      titleKey: 'why_local_title', descKey: 'why_local_desc',
+    },
+    {
+      icon: (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-4" /></svg>),
+      titleKey: 'why_hygienic_title', descKey: 'why_hygienic_desc',
+    },
+    {
+      icon: (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>),
+      titleKey: 'why_regular_title', descKey: 'why_regular_desc',
+    },
+    {
+      icon: (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>),
+      titleKey: 'why_customer_title', descKey: 'why_customer_desc',
+    },
+  ];
 
-    <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-16">
-        <div className="inline-flex items-center gap-2 bg-water-blue/10 text-water-blue text-sm font-semibold px-4 py-2 rounded-full mb-4">
-          <DropletIcon size={16} />
-          Why Jal Seva
-        </div>
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-warm-brown mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
-          Why Choose Us?
-        </h2>
-        <p className="text-warm-brown/60 max-w-xl mx-auto">
-          We don't just deliver water — we deliver trust, consistency, and care
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {features.map((f) => (
-          <div
-            key={f.title}
-            className="group relative bg-white rounded-3xl p-6 shadow-md hover:shadow-xl border border-water-blue/10 hover:border-water-blue/40 transition-all duration-300 hover:-translate-y-1 overflow-hidden"
-          >
-            {/* Glow on hover */}
-            <div className="absolute inset-0 bg-gradient-to-br from-water-blue/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl pointer-events-none" />
-
-            <div className="w-14 h-14 bg-water-blue rounded-2xl flex items-center justify-center mb-5 shadow-md group-hover:scale-110 transition-transform duration-300">
-              {f.icon}
-            </div>
-            <h3 className="text-lg font-bold text-warm-brown mb-2">{f.title}</h3>
-            <p className="text-warm-brown/60 text-sm leading-relaxed">{f.desc}</p>
+  return (
+    <section className="py-24 bg-white relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-water-blue/5 via-white to-water-blue/3 pointer-events-none" />
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 bg-water-blue/10 text-water-blue text-sm font-semibold px-4 py-2 rounded-full mb-4">
+            <DropletIcon size={16} />
+            {tr.why_badge}
           </div>
-        ))}
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-warm-brown mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+            {tr.why_title}
+          </h2>
+          <p className="text-warm-brown/60 max-w-xl mx-auto">{tr.why_subtitle}</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {features.map((f) => (
+            <div key={f.titleKey} className="group relative bg-white rounded-3xl p-6 shadow-md hover:shadow-xl border border-water-blue/10 hover:border-water-blue/40 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-water-blue/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl pointer-events-none" />
+              <div className="w-14 h-14 bg-water-blue rounded-2xl flex items-center justify-center mb-5 shadow-md group-hover:scale-110 transition-transform duration-300">
+                {f.icon}
+              </div>
+              <h3 className="text-lg font-bold text-warm-brown mb-2">{tr[f.titleKey]}</h3>
+              <p className="text-warm-brown/60 text-sm leading-relaxed">{tr[f.descKey]}</p>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 /* ─── Stats Banner ─── */
-const StatsBanner = () => (
-  <section className="py-16 bg-water-blue relative overflow-hidden">
-    <div className="absolute inset-0 opacity-10">
-      <svg className="w-full h-full" viewBox="0 0 200 100" preserveAspectRatio="xMidYMid slice">
-        <circle cx="20" cy="50" r="40" fill="white" />
-        <circle cx="180" cy="50" r="40" fill="white" />
-        <circle cx="100" cy="80" r="30" fill="white" />
-      </svg>
-    </div>
-    <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
-        {[
-          { value: '2,500+', label: 'Happy Customers' },
-          { value: '50,000+', label: 'Cans Delivered' },
-          { value: '5 Years', label: 'In Business' },
-          { value: '99.8%', label: 'Satisfaction Rate' },
-        ].map(({ value, label }) => (
-          <div key={label} className="space-y-2">
-            <div className="text-3xl sm:text-4xl font-extrabold text-white">{value}</div>
-            <div className="text-white/80 text-sm font-medium">{label}</div>
-          </div>
-        ))}
+const StatsBanner = () => {
+  const { language } = useLanguage();
+  const tr = translations[language];
+
+  const stats = [
+    { value: '2,500+', labelKey: 'stats_customers' },
+    { value: '50,000+', labelKey: 'stats_cans' },
+    { value: '5 ' + (language === 'kn' ? 'ವರ್ಷ' : 'Years'), labelKey: 'stats_years' },
+    { value: '99.8%', labelKey: 'stats_satisfaction' },
+  ];
+
+  return (
+    <section className="py-16 bg-water-blue relative overflow-hidden">
+      <div className="absolute inset-0 opacity-10">
+        <svg className="w-full h-full" viewBox="0 0 200 100" preserveAspectRatio="xMidYMid slice">
+          <circle cx="20" cy="50" r="40" fill="white" />
+          <circle cx="180" cy="50" r="40" fill="white" />
+          <circle cx="100" cy="80" r="30" fill="white" />
+        </svg>
       </div>
-    </div>
-  </section>
-);
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+          {stats.map(({ value, labelKey }) => (
+            <div key={labelKey} className="space-y-2">
+              <div className="text-3xl sm:text-4xl font-extrabold text-white">{value}</div>
+              <div className="text-white/80 text-sm font-medium">{tr[labelKey]}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
 
 /* ─── Footer ─── */
-const Footer = () => (
-  <footer id="footer" className="bg-warm-brown text-white relative overflow-hidden">
-    {/* Wave top */}
-    <div className="absolute top-0 left-0 right-0 overflow-hidden h-10">
-      <svg viewBox="0 0 1440 40" preserveAspectRatio="none" className="w-full h-full">
-        <path d="M0,0 Q360,40 720,20 Q1080,0 1440,30 L1440,0 L0,0 Z" fill="white" />
-      </svg>
-    </div>
+const Footer = () => {
+  const { language } = useLanguage();
+  const tr = translations[language];
 
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-12">
-        {/* Brand */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-water-blue rounded-full flex items-center justify-center">
-              <DropletIcon size={20} />
-            </div>
-            <span className="text-xl font-bold" style={{ fontFamily: 'Inter, sans-serif' }}>
-              Jal <span className="text-water-blue">Seva</span>
-            </span>
-          </div>
-          <p className="text-white/70 text-sm leading-relaxed">
-            Fresh water, delivered to your door. Trusted by thousands of families.
-          </p>
-          {/* Contact number */}
-          <div className="inline-flex items-center gap-3 bg-water-blue/20 border border-water-blue/40 rounded-2xl px-4 py-3">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4FC3F7" strokeWidth="2">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
-            </svg>
-            <div>
-              <p className="text-water-blue text-xs font-semibold">Call Us</p>
-              <p className="text-white font-bold">+91 98765 43210</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Links */}
-        <div>
-          <h4 className="text-water-blue font-bold text-sm uppercase tracking-widest mb-5">Quick Links</h4>
-          <ul className="space-y-3">
-            {[
-              { label: 'Home', href: '#hero' },
-              { label: 'How It Works', href: '#how-it-works' },
-              { label: 'Our Products', href: '#products' },
-              { label: 'Login', href: '/login', isRoute: true },
-              { label: 'Place Order', href: '/place-order', isRoute: true },
-            ].map(({ label, href, isRoute }) =>
-              isRoute ? (
-                <li key={label}>
-                  <Link to={href} className="text-white/70 hover:text-water-blue text-sm transition-colors duration-200 flex items-center gap-1">
-                    <span className="text-water-blue">›</span> {label}
-                  </Link>
-                </li>
-              ) : (
-                <li key={label}>
-                  <a
-                    href={href}
-                    onClick={(e) => { e.preventDefault(); document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' }); }}
-                    className="text-white/70 hover:text-water-blue text-sm transition-colors duration-200 flex items-center gap-1"
-                  >
-                    <span className="text-water-blue">›</span> {label}
-                  </a>
-                </li>
-              )
-            )}
-          </ul>
-        </div>
-
-        {/* Working Hours */}
-        <div>
-          <h4 className="text-water-blue font-bold text-sm uppercase tracking-widest mb-5">Delivery Hours</h4>
-          <ul className="space-y-3 text-sm text-white/70">
-            {[
-              ['Monday – Friday', '7:00 AM – 8:00 PM'],
-              ['Saturday', '7:00 AM – 6:00 PM'],
-              ['Sunday', '9:00 AM – 4:00 PM'],
-            ].map(([day, time]) => (
-              <li key={day} className="flex justify-between gap-4">
-                <span>{day}</span>
-                <span className="text-white font-medium">{time}</span>
-              </li>
-            ))}
-          </ul>
-
-          {/* Order CTA */}
-          <Link
-            to="/place-order"
-            className="mt-6 inline-flex items-center gap-2 px-5 py-3 bg-water-blue text-white text-sm font-bold rounded-full hover:bg-water-blue-dark transition-all duration-200 shadow-lg"
-          >
-            Order Now →
-          </Link>
-        </div>
+  return (
+    <footer id="footer" className="bg-warm-brown text-white relative overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 overflow-hidden h-10">
+        <svg viewBox="0 0 1440 40" preserveAspectRatio="none" className="w-full h-full">
+          <path d="M0,0 Q360,40 720,20 Q1080,0 1440,30 L1440,0 L0,0 Z" fill="white" />
+        </svg>
       </div>
 
-      {/* Divider */}
-      <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-white/50">
-        <p>© {new Date().getFullYear()} Jal Seva. All rights reserved.</p>
-        <p className="italic text-water-blue/80">Fresh water, delivered to your door.</p>
-      </div>
-    </div>
-  </footer>
-);
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-12">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 bg-water-blue rounded-full flex items-center justify-center">
+                <DropletIcon size={20} />
+              </div>
+              <span className="text-xl font-bold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                Jal <span className="text-water-blue">Seva</span>
+              </span>
+            </div>
+            <p className="text-white/70 text-sm leading-relaxed">{tr.footer_tagline}</p>
+            <div className="inline-flex items-center gap-3 bg-water-blue/20 border border-water-blue/40 rounded-2xl px-4 py-3">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4FC3F7" strokeWidth="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg>
+              <div>
+                <p className="text-water-blue text-xs font-semibold">{tr.footer_call_us}</p>
+                <p className="text-white font-bold">+91 98765 43210</p>
+              </div>
+            </div>
+          </div>
 
-/* ─── Scroll-to-top button ─── */
+          <div>
+            <h4 className="text-water-blue font-bold text-sm uppercase tracking-widest mb-5">{tr.footer_quick_links}</h4>
+            <ul className="space-y-3">
+              {[
+                { label: tr.nav_home, href: '#hero' },
+                { label: tr.nav_how_it_works, href: '#how-it-works' },
+                { label: tr.footer_our_products, href: '#products' },
+                { label: tr.nav_login, href: '/login', isRoute: true },
+                { label: tr.footer_place_order, href: '/place-order', isRoute: true },
+              ].map(({ label, href, isRoute }) =>
+                isRoute ? (
+                  <li key={label}>
+                    <Link to={href} className="text-white/70 hover:text-water-blue text-sm transition-colors duration-200 flex items-center gap-1">
+                      <span className="text-water-blue">›</span> {label}
+                    </Link>
+                  </li>
+                ) : (
+                  <li key={label}>
+                    <a
+                      href={href}
+                      onClick={(e) => { e.preventDefault(); document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' }); }}
+                      className="text-white/70 hover:text-water-blue text-sm transition-colors duration-200 flex items-center gap-1"
+                    >
+                      <span className="text-water-blue">›</span> {label}
+                    </a>
+                  </li>
+                )
+              )}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-water-blue font-bold text-sm uppercase tracking-widest mb-5">{tr.footer_delivery_hours}</h4>
+            <ul className="space-y-3 text-sm text-white/70">
+              {[
+                [tr.footer_mon_fri, '7:00 AM – 8:00 PM'],
+                [tr.footer_saturday, '7:00 AM – 6:00 PM'],
+                [tr.footer_sunday, '9:00 AM – 4:00 PM'],
+              ].map(([day, time]) => (
+                <li key={day} className="flex justify-between gap-4">
+                  <span>{day}</span>
+                  <span className="text-white font-medium">{time}</span>
+                </li>
+              ))}
+            </ul>
+            <Link
+              to="/place-order"
+              className="mt-6 inline-flex items-center gap-2 px-5 py-3 bg-water-blue text-white text-sm font-bold rounded-full hover:bg-water-blue-dark transition-all duration-200 shadow-lg"
+            >
+              {tr.footer_order_now}
+            </Link>
+          </div>
+        </div>
+
+        <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-white/50">
+          <p>{tr.footer_copyright.replace('{year}', new Date().getFullYear())}</p>
+          <p className="italic text-water-blue/80">{tr.footer_tagline}</p>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+/* ─── Scroll-to-top ─── */
 const ScrollToTop = () => {
   const [visible, setVisible] = useState(false);
   useEffect(() => {

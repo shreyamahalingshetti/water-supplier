@@ -44,6 +44,12 @@ const Order = {
     if (filters.date) {
       query = query.eq('delivery_date', filters.date);
     }
+    if (filters.from) {
+      query = query.gte('delivery_date', filters.from);
+    }
+    if (filters.to) {
+      query = query.lte('delivery_date', filters.to);
+    }
     if (filters.area) {
       query = query.eq('area', filters.area);
     }

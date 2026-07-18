@@ -32,8 +32,8 @@ const orderController = {
    */
   getAll: async (req, res, next) => {
     try {
-      const { date, area, status } = req.query;
-      const orders = await orderService.getAllOrders({ date, area, status });
+      const { date, area, status, from, to } = req.query;
+      const orders = await orderService.getAllOrders({ date, area, status, from, to });
       
       return sendSuccess(res, 'Orders retrieved successfully', orders);
     } catch (error) {

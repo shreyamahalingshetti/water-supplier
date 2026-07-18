@@ -1,17 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext.jsx';
+import { translations, t } from '../utils/translations.js';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 /**
  * Customer Dashboard for Jal Seva
- * Color scheme:
- *  - #4FC3F7  water blue  → buttons, accents, active states
- *  - #FFFFFF  white       → backgrounds, cards
- *  - #3E2723  dark brown  → text, borders, labels
- *
- * All data is fetched from the backend on mount.
- * Customer ID is decoded from the JWT accessToken (Supabase sub claim).
  */
 
 /* ── JWT decoder (no crypto — just reads payload) ── */
@@ -27,6 +22,9 @@ function decodeJwtSub(token) {
 
 function Dashboard() {
   const navigate = useNavigate();
+  const { language, toggleLanguage } = useLanguage();
+  const tr = translations[language];
+
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef(null);
 
@@ -49,7 +47,7 @@ function Dashboard() {
   });
   const [orders,          setOrders]          = useState([]);
   const [recurringOrders, setRecurringOrders] = useState([]);
-  const [disruption,      setDisruption]      = useState('');
+  const [disruptions,     setDisruptions]     = useState([]);
   const [notifications,   setNotifications]   = useState([]);
 
   /* ── UI states ── */
@@ -90,7 +88,6 @@ function Dashboard() {
       setFetchError('');
 
       try {
-        // Fire all requests in parallel (disruption is public)
         const [profileRes, ordersRes, recurringRes, disruptionRes, notifRes] =
           await Promise.all([
             fetch(`${API_URL}/users/${customerId}`,                    { headers: getAuthHeaders() }),
@@ -100,7 +97,7 @@ function Dashboard() {
             fetch(`${API_URL}/notifications/customer/${customerId}`,   { headers: getAuthHeaders() }),
           ]);
 
-        // Check for 401s first
+        // Check for 401s
         if ([profileRes, ordersRes, recurringRes, notifRes].some((r) => r.status === 401)) {
           handle401();
           return;
@@ -117,7 +114,6 @@ function Dashboard() {
               : (p.name || 'U').slice(0, 2).toUpperCase();
           const updatedProfile = { ...p, initials };
           setProfile(updatedProfile);
-          // Keep localStorage cache fresh
           localStorage.setItem('userProfile', JSON.stringify(p));
         }
 
@@ -133,11 +129,11 @@ function Dashboard() {
           setRecurringOrders(d.data || d || []);
         }
 
-        /* Disruption — optional, no error if missing */
+        /* Disruption */
         if (disruptionRes.ok) {
           const d = await disruptionRes.json();
-          const msg = d.data?.message || d.message || '';
-          setDisruption(msg);
+          const list = d.data?.disruptions || (d.data?.disruption ? [d.data.disruption] : []);
+          setDisruptions(list);
         }
 
         /* Notifications */
@@ -169,7 +165,6 @@ function Dashboard() {
       if (res.status === 401) { handle401(); return; }
       if (!res.ok) throw new Error('Failed to update subscription.');
 
-      // Refresh recurring orders list
       const token      = localStorage.getItem('accessToken');
       const customerId = decodeJwtSub(token);
       const refreshRes = await fetch(
@@ -181,7 +176,6 @@ function Dashboard() {
         setRecurringOrders(d.data || d || []);
       }
     } catch (err) {
-      // Optimistic fallback: just flip locally so UI doesn't freeze
       setRecurringOrders((prev) =>
         prev.map((r) => (r.id === rec.id ? { ...r, is_active: !r.is_active } : r))
       );
@@ -196,7 +190,6 @@ function Dashboard() {
     navigate('/login');
   };
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (accountMenuRef.current && !accountMenuRef.current.contains(e.target)) {
@@ -213,6 +206,13 @@ function Dashboard() {
   const phone      = profile?.phone      ?? '—';
   const area       = profile?.area       ?? '—';
   const activeSubs = recurringOrders.filter((r) => r.is_active).length;
+
+  const getStatusText = (status = '') => {
+    const s = status.toLowerCase();
+    if (s === 'pending') return tr.dash_status_pending || 'Pending';
+    if (s === 'delivered') return tr.dash_status_delivered || 'Delivered';
+    return tr.dash_status_cancelled || 'Cancelled';
+  };
 
   /* ── Status badge helper ── */
   const statusBadge = (status = '') => {
@@ -231,13 +231,12 @@ function Dashboard() {
     const mins  = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days  = Math.floor(diff / 86400000);
-    if (mins  < 1)  return 'Just now';
-    if (mins  < 60) return `${mins} min${mins > 1 ? 's' : ''} ago`;
-    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (mins  < 1)  return language === 'kn' ? 'ಈಗಷ್ಟೇ' : 'Just now';
+    if (mins  < 60) return language === 'kn' ? `${mins} ನಿಮಿಷದ ಹಿಂದೆ` : `${mins} min${mins > 1 ? 's' : ''} ago`;
+    if (hours < 24) return language === 'kn' ? `${hours} ಗಂಟೆಯ ಹಿಂದೆ` : `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    return language === 'kn' ? `${days} ದಿನದ ಹಿಂದೆ` : `${days} day${days > 1 ? 's' : ''} ago`;
   };
 
-  /* ────────────────────────────── JSX ────────────────────────────── */
   return (
     <div className="min-h-screen bg-[#F5F7FA] flex flex-col">
 
@@ -263,20 +262,31 @@ function Dashboard() {
               <path d="M7 15c2-1 3 1 5 0s3-1 5 0" />
             </svg>
             <div>
-              <span className="text-lg font-bold text-[#3E2723] leading-none">Jal Seva</span>
+              <span className="text-lg font-bold text-[#3E2723] leading-none">{tr.brand_name}</span>
               <p className="text-[11px] text-[#3E2723]/60 leading-none mt-0.5 hidden sm:block">
-                Fresh water, delivered to your door
+                {tr.brand_tagline}
               </p>
             </div>
           </div>
 
           {/* Nav right */}
           <div className="flex items-center gap-3">
+            {/* Language Toggle */}
+            <button
+              onClick={toggleLanguage}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 border-water-blue text-water-blue text-xs font-bold hover:bg-water-blue hover:text-white transition-all duration-200"
+              style={{ borderColor: '#4FC3F7', color: '#4FC3F7' }}
+            >
+              🌐 <span>{tr.lang_current}</span>
+              <span className="opacity-60">|</span>
+              <span className="opacity-80">{tr.lang_toggle}</span>
+            </button>
+
             <button
               onClick={() => navigate('/place-order')}
               className="hidden sm:flex items-center gap-1.5 px-4 py-2 bg-[#4FC3F7] text-white font-semibold rounded-lg text-sm hover:bg-[#29B6F6] active:scale-95 transition-all"
             >
-              <span className="text-lg leading-none">+</span> New Order
+              <span className="text-lg leading-none">+</span> {tr.dash_new_order_menu}
             </button>
 
             {/* Account avatar with dropdown */}
@@ -315,14 +325,14 @@ function Dashboard() {
                       onClick={() => setAccountMenuOpen(false)}
                     >
                       <span className="material-symbols-outlined text-[18px] text-[#4FC3F7]">person</span>
-                      My Profile
+                      {tr.dash_my_profile}
                     </button>
                     <button
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#3E2723] hover:bg-[#F5F7FA] transition-colors text-left"
                       onClick={() => { setAccountMenuOpen(false); navigate('/place-order'); }}
                     >
                       <span className="material-symbols-outlined text-[18px] text-[#4FC3F7]">add_shopping_cart</span>
-                      New Order
+                      {tr.dash_new_order_menu}
                     </button>
                     <div className="border-t border-[#3E2723]/10 my-1" />
                     <button
@@ -330,7 +340,7 @@ function Dashboard() {
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
                     >
                       <span className="material-symbols-outlined text-[18px]">logout</span>
-                      Logout
+                      {tr.dash_logout}
                     </button>
                   </div>
                 </div>
@@ -343,42 +353,39 @@ function Dashboard() {
       {/* ── PAGE BODY ── */}
       <main className="flex-1 max-w-screen-xl mx-auto w-full px-6 py-8 space-y-6">
 
-        {/* ── Global loading spinner ── */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <div className="w-10 h-10 border-4 border-[#4FC3F7]/30 border-t-[#4FC3F7] rounded-full animate-spin" />
-            <p className="text-sm text-[#3E2723]/60">Loading your dashboard…</p>
+            <p className="text-sm text-[#3E2723]/60">{language === 'kn' ? 'ನಿಮ್ಮ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಲೋಡ್ ಆಗುತ್ತಿದೆ…' : 'Loading your dashboard…'}</p>
           </div>
         )}
 
-        {/* ── Fetch error ── */}
         {!loading && fetchError && (
           <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0">
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
             <div className="text-sm">
-              <span className="font-bold block mb-0.5">Error</span>
+              <span className="font-bold block mb-0.5">{language === 'kn' ? 'ದೋಷ' : 'Error'}</span>
               {fetchError}
             </div>
           </div>
         )}
 
-        {/* ── Main content (shown after load) ── */}
         {!loading && !fetchError && (
           <>
-            {/* Disruption banner */}
-            {disruption && (
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
+            {/* Disruption banners */}
+            {disruptions.length > 0 && disruptions.map((dis, idx) => (
+              <div key={dis.id || idx} className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
                 <span className="material-symbols-outlined text-amber-500 mt-0.5 shrink-0">warning</span>
                 <div className="text-sm">
                   <span className="font-bold uppercase tracking-wider text-xs block mb-0.5">
-                    Service Announcement
+                    {tr.dash_service_announcement}
                   </span>
-                  {disruption}
+                  {dis.message}
                 </div>
               </div>
-            )}
+            ))}
 
             {/* ── MAIN GRID ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -389,20 +396,20 @@ function Dashboard() {
                 {/* Your Bookings */}
                 <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm overflow-hidden">
                   <div className="flex items-center justify-between px-6 py-4 border-b border-[#3E2723]/10">
-                    <h2 className="text-base font-bold text-[#3E2723]">Your Bookings</h2>
+                    <h2 className="text-base font-bold text-[#3E2723]">{tr.dash_your_bookings}</h2>
                     <button
                       onClick={() => navigate('/place-order')}
                       className="flex items-center gap-1 px-4 py-2 bg-[#4FC3F7] text-white font-semibold rounded-lg text-xs hover:bg-[#29B6F6] active:scale-95 transition-all"
                     >
-                      + New Order
+                      {tr.dash_new_order}
                     </button>
                   </div>
 
                   {orders.length === 0 ? (
                     <div className="px-6 py-10 text-center text-[#3E2723]/50 text-sm">
-                      No orders yet.{' '}
+                      {tr.dash_no_orders}{' '}
                       <button className="text-[#4FC3F7] font-semibold hover:underline" onClick={() => navigate('/place-order')}>
-                        Place your first order →
+                        {tr.dash_place_first}
                       </button>
                     </div>
                   ) : (
@@ -411,17 +418,20 @@ function Dashboard() {
                         <div key={order.id} className="flex items-center justify-between px-6 py-4 hover:bg-[#F5F7FA] transition-colors">
                           <div className="space-y-1">
                             <div className="font-semibold text-[#3E2723] text-sm">
-                              #{order.id}&nbsp;·&nbsp;{order.quantity} Can{order.quantity > 1 ? 's' : ''} ({order.can_size || '20L'})
+                              #{order.id}&nbsp;·&nbsp;{order.quantity} {language === 'kn' ? 'ಕ್ಯಾನ್' : 'Can'}{order.quantity > 1 ? (language === 'kn' ? 'ಗಳು' : 's') : ''} ({order.can_size || '20L'})
                             </div>
                             <div className="text-xs text-[#3E2723]/60">
-                              {order.delivery_date}&nbsp;|&nbsp;{order.time_slot}
+                              {order.delivery_date}&nbsp;|&nbsp;{
+                                order.time_slot === 'Morning 7am-10am' ? tr.order_slot_morning :
+                                order.time_slot === 'Afternoon 12pm-3pm' ? tr.order_slot_afternoon : tr.order_slot_evening
+                              }
                             </div>
                             {order.area && (
                               <div className="text-xs text-[#3E2723]/60">{order.area}</div>
                             )}
                           </div>
                           <span className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide ${statusBadge(order.status)}`}>
-                            {(order.status || 'UNKNOWN').toUpperCase()}
+                            {getStatusText(order.status).toUpperCase()}
                           </span>
                         </div>
                       ))}
@@ -432,12 +442,12 @@ function Dashboard() {
                 {/* Recurring Subscriptions */}
                 <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm overflow-hidden">
                   <div className="px-6 py-4 border-b border-[#3E2723]/10">
-                    <h2 className="text-base font-bold text-[#3E2723]">Recurring Subscriptions</h2>
+                    <h2 className="text-base font-bold text-[#3E2723]">{tr.dash_recurring_subs}</h2>
                   </div>
 
                   {recurringOrders.length === 0 ? (
                     <div className="px-6 py-10 text-center text-[#3E2723]/50 text-sm">
-                      No recurring subscriptions. Set one up when placing an order.
+                      {tr.dash_no_recurring}
                     </div>
                   ) : (
                     <div className="divide-y divide-[#3E2723]/8">
@@ -448,21 +458,20 @@ function Dashboard() {
                         >
                           <div className="space-y-1">
                             <div className="font-semibold text-[#3E2723] text-sm">
-                              #{rec.id}&nbsp;·&nbsp;{rec.quantity} Can{rec.quantity > 1 ? 's' : ''}
+                              #{rec.id}&nbsp;·&nbsp;{rec.quantity} {language === 'kn' ? 'ಕ್ಯಾನ್' : 'Can'}{rec.quantity > 1 ? (language === 'kn' ? 'ಗಳು' : 's') : ''}
                             </div>
                             <div className="text-xs text-[#3E2723]/60">
-                              Every {rec.frequency_days} days
+                              {t(tr, 'dash_every_x_days', { days: rec.frequency_days })}
                               {rec.next_delivery_date && (
-                                <>&nbsp;·&nbsp;Next: {rec.next_delivery_date}</>
+                                <>&nbsp;·&nbsp;{language === 'kn' ? 'ಮುಂದಿನ ಡೆಲಿವರಿ' : 'Next'}: {rec.next_delivery_date}</>
                               )}
                             </div>
                           </div>
 
                           <div className="flex items-center gap-3 shrink-0">
                             <span className={`text-[11px] font-bold ${rec.is_active ? 'text-[#4FC3F7]' : 'text-[#3E2723]/40'}`}>
-                              {rec.is_active ? 'ACTIVE' : 'PAUSED'}
+                              {rec.is_active ? tr.dash_active.toUpperCase() : tr.dash_paused.toUpperCase()}
                             </span>
-                            {/* Toggle switch */}
                             <button
                               onClick={() => toggleRecurringActive(rec)}
                               disabled={togglingId === rec.id}
@@ -512,11 +521,11 @@ function Dashboard() {
                   <div className="grid grid-cols-2 gap-2 text-center">
                     <div className="p-2 rounded-lg bg-[#F5F7FA]">
                       <div className="text-lg font-bold text-[#4FC3F7]">{orders.length}</div>
-                      <div className="text-[10px] text-[#3E2723]/60 uppercase tracking-wide">Orders</div>
+                      <div className="text-[10px] text-[#3E2723]/60 uppercase tracking-wide">{tr.dash_orders}</div>
                     </div>
                     <div className="p-2 rounded-lg bg-[#F5F7FA]">
                       <div className="text-lg font-bold text-[#4FC3F7]">{activeSubs}</div>
-                      <div className="text-[10px] text-[#3E2723]/60 uppercase tracking-wide">Active Subs</div>
+                      <div className="text-[10px] text-[#3E2723]/60 uppercase tracking-wide">{tr.dash_active_subs}</div>
                     </div>
                   </div>
                 </div>
@@ -524,11 +533,11 @@ function Dashboard() {
                 {/* Recent Alerts */}
                 <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm overflow-hidden">
                   <div className="px-5 py-4 border-b border-[#3E2723]/10">
-                    <h2 className="text-base font-bold text-[#3E2723]">Recent Alerts</h2>
+                    <h2 className="text-base font-bold text-[#3E2723]">{tr.dash_recent_alerts}</h2>
                   </div>
                   {notifications.length === 0 ? (
                     <div className="px-5 py-8 text-center text-[#3E2723]/50 text-sm">
-                      No notifications yet.
+                      {tr.dash_no_notifs}
                     </div>
                   ) : (
                     <div className="divide-y divide-[#3E2723]/8">

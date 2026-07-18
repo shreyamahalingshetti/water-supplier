@@ -1,20 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext.jsx';
+import { translations } from '../utils/translations.js';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 /**
  * Login Component for Jal Seva — Customer only (phone + OTP).
- *
- * Post-OTP verification flow:
- *  1. Call POST /api/auth/verify-otp
- *  2. If signupName/signupArea exist in localStorage → user is new
- *     → call POST /api/users to create profile, then clear localStorage signup data
- *  3. Store accessToken + userRole=customer in localStorage
- *  4. Redirect to /dashboard
  */
 function Login() {
   const navigate = useNavigate();
+  const { language, toggleLanguage } = useLanguage();
+  const tr = translations[language];
 
   const [phone, setPhone]       = useState('');
   const [password, setPassword] = useState('');
@@ -124,11 +121,11 @@ void main() {
     setSuccess('');
 
     if (phone.length < 10) {
-      setError('Please enter a valid 10-digit mobile number.');
+      setError(tr.login_err_phone);
       return;
     }
     if (!password) {
-      setError('Please enter your password.');
+      setError(tr.login_err_password);
       return;
     }
 
@@ -155,7 +152,7 @@ void main() {
       }
       localStorage.setItem('userRole', 'customer');
 
-      setSuccess('Logged in successfully!');
+      setSuccess(tr.login_success);
       setTimeout(() => navigate('/dashboard'), 500);
 
     } catch (err) {
@@ -166,7 +163,20 @@ void main() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-container-margin-mobile md:p-container-margin-desktop overflow-hidden relative">
+    <div className="min-h-screen flex items-center justify-center p-container-margin-mobile md:p-container-margin-desktop overflow-hidden relative bg-[#FFFFFF]">
+      {/* Language Toggle floating top-right */}
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          onClick={toggleLanguage}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 border-water-blue text-water-blue text-xs font-bold hover:bg-water-blue hover:text-white transition-all duration-200"
+          style={{ borderColor: '#4FC3F7', color: '#4FC3F7' }}
+        >
+          🌐 <span>{tr.lang_current}</span>
+          <span className="opacity-60">|</span>
+          <span className="opacity-80">{tr.lang_toggle}</span>
+        </button>
+      </div>
+
       {/* Background Shader Wave */}
       <div className="absolute inset-0 w-full h-full z-0 opacity-40">
         <canvas ref={canvasRef} className="block w-full h-full" />
@@ -178,18 +188,18 @@ void main() {
           {/* Logo */}
           <div className="mb-stack-lg text-center">
             <img
-              alt="Jal Seva Logo"
+              alt={tr.brand_name}
               className="w-16 h-16 object-contain mb-stack-sm mx-auto"
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOfW5NtncZ1w3PwW7WzQnH8BjGIOijsjQGZSVQwlDacSAtw78Os5hB69EhNLRXrSekrVa_tbltAT3v3mt3dI7P912PJ2lxI7YNj5lGD_dl0GU2OI3oThmsaKAmlWY5thUz_fwmvTMFlLGDpi-gntFr5FJlr3CPpBIWKsD34XTFhhuouFZMBVERa-jw6EVJKApqCmnDrown9LwPTPz2CduiCugMXwOT64y7i9Bd2K20XQ_1JQp2FlzFYyahNWcqysJ_U8fz8RSXqFA"
             />
-            <h1 className="text-2xl md:text-3xl font-bold text-primary mb-1">Jal Seva</h1>
-            <p className="text-sm text-on-surface-variant">Fresh water, delivered to your door</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-primary mb-1">{tr.brand_name}</h1>
+            <p className="text-sm text-on-surface-variant">{tr.brand_tagline}</p>
           </div>
 
           {/* Heading */}
           <div className="w-full mb-4 text-center">
             <p className="text-sm font-semibold text-on-surface-variant">
-              Sign in to your customer account
+              {tr.login_title}
             </p>
           </div>
 
@@ -197,7 +207,7 @@ void main() {
           <form onSubmit={handleLogin} className="w-full space-y-4">
             <div>
               <label className="block text-sm font-semibold text-on-surface-variant mb-1">
-                Mobile Number
+                {tr.login_mobile}
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base text-on-surface-variant border-r border-outline-variant pr-2">
@@ -216,7 +226,7 @@ void main() {
 
             <div>
               <label className="block text-sm font-semibold text-on-surface-variant mb-1">
-                Password
+                {tr.login_password}
               </label>
               <input
                 className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all text-base outline-none text-on-surface"
@@ -235,7 +245,7 @@ void main() {
               {loading ? (
                 <div className="loader" />
               ) : (
-                <span>Login</span>
+                <span>{tr.login_btn}</span>
               )}
             </button>
           </form>
@@ -258,20 +268,20 @@ void main() {
           {/* Footer links */}
           <div className="mt-6 text-center">
             <p className="text-sm text-on-surface-variant">
-              Don't have an account?{' '}
+              {tr.login_no_account}{' '}
               <button
                 type="button"
                 onClick={() => navigate('/signup')}
                 className="text-primary font-bold hover:underline outline-none"
               >
-                Sign Up
+                {tr.login_sign_up}
               </button>
             </p>
           </div>
         </div>
 
         <p className="mt-8 text-center text-xs uppercase tracking-wider text-on-surface-variant opacity-60">
-          © 2024 Jal Seva Technologies. All rights reserved.
+          {tr.footer_copyright.replace('{year}', '2024')}
         </p>
       </div>
     </div>

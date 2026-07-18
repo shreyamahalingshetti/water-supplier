@@ -7,7 +7,7 @@ const disruptionService = {
   /**
    * Create a new disruption announcement (Supplier only)
    */
-  createDisruption: async (data, supplierId) => {
+  createDisruption: async (data, supplierPhone) => {
     let disruptionDate = data.disruption_date;
 
     // Default to today's local date string if not specified
@@ -24,11 +24,21 @@ const disruptionService = {
       }
     }
 
+    const User = require('../models/userModel');
+    let createdBy = null;
+    
+    if (supplierPhone) {
+      const formattedPhone = supplierPhone.startsWith('+') ? supplierPhone : '+' + supplierPhone;
+      const profile = await User.findByPhone(formattedPhone);
+      if (profile) {
+        createdBy = profile.id;
+      }
+    }
+
     const disruptionData = {
-      title: data.title || 'Water Supply Disruption',
-      description: data.description || 'Water delivery service is temporarily suspended.',
+      message: data.message || data.description || 'Water delivery service is temporarily suspended.',
       disruption_date: disruptionDate,
-      created_by: supplierId
+      created_by: createdBy
     };
 
     return await Disruption.create(disruptionData);
@@ -62,11 +72,12 @@ const disruptionService = {
     const localToday = new Date(Date.now() - offsetMs);
     const todayStr = localToday.toISOString().split('T')[0];
 
-    const disruption = await Disruption.findByDate(todayStr);
+    const disruptions = await Disruption.findByDate(todayStr);
 
     return {
-      hasDisruption: !!disruption,
-      disruption: disruption || null
+      hasDisruption: disruptions.length > 0,
+      disruption: disruptions[0] || null,
+      disruptions: disruptions
     };
   },
 
