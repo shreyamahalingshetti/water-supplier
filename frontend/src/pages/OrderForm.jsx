@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 /**
@@ -23,11 +24,23 @@ function OrderForm() {
     return `${yyyy}-${mm}-${dd}`;
   };
 
+  // Pre-fill area from the user's saved profile (read-only — set during signup)
+  const getUserArea = () => {
+    try {
+      const cached = localStorage.getItem('userProfile');
+      if (cached) {
+        const profile = JSON.parse(cached);
+        return profile.area || '';
+      }
+    } catch {}
+    return '';
+  };
+
   // Form states
   const [cans, setCans] = useState(1);
   const [deliveryDate, setDeliveryDate] = useState(getTomorrowDateString());
   const [timeSlot, setTimeSlot] = useState('Morning 7am-10am');
-  const [area, setArea] = useState('Indiranagar'); // Default pre-filled locality
+  const [area] = useState(getUserArea); // Read-only — from user profile
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
   const [frequencyDays, setFrequencyDays] = useState(7);
@@ -280,20 +293,25 @@ function OrderForm() {
               </select>
             </div>
 
-            {/* Delivery Area/Locality */}
+            {/* Delivery Area/Locality — read-only, sourced from user profile */}
             <div>
-              <label className="block text-sm font-semibold text-[#3E2723] mb-1">Delivery Area/Locality</label>
+              <label className="block text-sm font-semibold text-[#3E2723] mb-1">
+                Delivery Area/Locality
+                <span className="ml-2 text-xs font-normal text-[#3E2723]/60 inline-flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="inline w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                  Set during signup
+                </span>
+              </label>
               <input
                 type="text"
                 value={area}
-                onChange={(e) => setArea(e.target.value)}
-                className="w-full px-4 py-2 bg-[#FFFFFF] border border-[#3E2723] rounded-lg focus:ring-2 focus:ring-[#4FC3F7] focus:border-[#4FC3F7] transition-all text-base outline-none text-[#3E2723] placeholder-[#3E2723]/50"
-                placeholder="Locality name"
+                readOnly
+                className="w-full px-4 py-2 bg-[#f0f9ff] border border-[#4FC3F7] rounded-lg text-base text-[#3E2723] cursor-not-allowed select-none"
               />
-              {errors.area && (
-                <span className="text-xs text-[#3E2723] mt-1 block font-semibold">* {errors.area}</span>
-              )}
             </div>
+
 
             {/* Special Instructions (Optional) */}
             <div>
