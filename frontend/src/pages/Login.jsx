@@ -143,15 +143,21 @@ void main() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to login. Please check credentials.');
 
-      // Store token
+      // Store token and profile
       const token = data.data?.session?.access_token;
       if (token) {
         localStorage.setItem('accessToken', token);
+      }
+      // Store profile info so dashboard can display name/area immediately
+      const profile = data.data?.profile;
+      if (profile) {
+        localStorage.setItem('userProfile', JSON.stringify(profile));
       }
       localStorage.setItem('userRole', 'customer');
 
       setSuccess('Logged in successfully!');
       setTimeout(() => navigate('/dashboard'), 500);
+
     } catch (err) {
       setError(err.message);
     } finally {

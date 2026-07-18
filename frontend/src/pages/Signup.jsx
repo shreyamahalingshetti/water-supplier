@@ -69,10 +69,23 @@ function Signup() {
         throw new Error(data.message || 'Failed to sign up. Please try again.');
       }
 
-      // Store token if returned
+      // Store token and profile if returned
       const token = data.data?.session?.access_token;
       if (token) {
         localStorage.setItem('accessToken', token);
+      }
+      // Store the created profile for instant dashboard display
+      const profile = data.data?.profile;
+      if (profile) {
+        localStorage.setItem('userProfile', JSON.stringify(profile));
+      } else {
+        // Fallback: store what we know from the form
+        localStorage.setItem('userProfile', JSON.stringify({
+          name: name.trim(),
+          area: area.trim(),
+          phone: `+91${phone}`,
+          role: 'customer'
+        }));
       }
       localStorage.setItem('userRole', 'customer');
 

@@ -17,10 +17,11 @@ async function main() {
     const data = await res.json();
     console.log('Definitions found:', Object.keys(data.definitions || {}));
     
-    if (data.definitions && data.definitions.disruptions) {
-      console.log('\n--- disruptions properties ---');
-      console.log(data.definitions.disruptions.properties);
+    if (data.definitions && data.definitions.users) {
+      console.log('\n--- users properties ---');
+      console.log(JSON.stringify(data.definitions.users.properties, null, 2));
     }
+
   } catch (err) {
     console.error('Error fetching API spec:', err);
   }

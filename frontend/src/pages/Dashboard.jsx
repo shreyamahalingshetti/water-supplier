@@ -31,7 +31,22 @@ function Dashboard() {
   const accountMenuRef = useRef(null);
 
   /* ── Data states ── */
-  const [profile,         setProfile]         = useState(null);
+  const [profile,         setProfile]         = useState(() => {
+    // Seed profile immediately from login cache so name/area show instantly
+    try {
+      const cached = localStorage.getItem('userProfile');
+      if (cached) {
+        const p = JSON.parse(cached);
+        const nameParts = (p.name || '').trim().split(' ');
+        const initials =
+          nameParts.length >= 2
+            ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+            : (p.name || 'U').slice(0, 2).toUpperCase();
+        return { ...p, initials };
+      }
+    } catch {}
+    return null;
+  });
   const [orders,          setOrders]          = useState([]);
   const [recurringOrders, setRecurringOrders] = useState([]);
   const [disruption,      setDisruption]      = useState('');
@@ -52,6 +67,7 @@ function Dashboard() {
   const handle401 = useCallback(() => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('userProfile');
     navigate('/login');
   }, [navigate]);
 
@@ -99,7 +115,10 @@ function Dashboard() {
             nameParts.length >= 2
               ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
               : (p.name || 'U').slice(0, 2).toUpperCase();
-          setProfile({ ...p, initials });
+          const updatedProfile = { ...p, initials };
+          setProfile(updatedProfile);
+          // Keep localStorage cache fresh
+          localStorage.setItem('userProfile', JSON.stringify(p));
         }
 
         /* Orders */

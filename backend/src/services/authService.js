@@ -109,26 +109,40 @@ const authService = {
       throw error;
     }
 
-    // Auto-heal/create profile record if it is missing on login
+    // Fetch or create database profile and return it alongside session
+    let profile = null;
     if (data && data.user) {
       const { uuidToBigInt } = require('../utils/uuidHelper');
       const User = require('../models/userModel');
       const bigIntId = uuidToBigInt(data.user.id);
 
-      const existingProfile = await User.findById(bigIntId);
-      if (!existingProfile) {
-        await User.create({
-          id: bigIntId,
-          name: 'Customer',
-          phone: phone,
-          password: password,
-          role: 'customer',
-          area: 'Default'
-        });
+      // First try to find by bigint ID
+      profile = await User.findById(bigIntId);
+
+      // If not found, try by phone number (user may have been created with different ID mapping)
+      if (!profile) {
+        profile = await User.findByPhone(phone);
+      }
+
+      // Still not found — create a placeholder that user can update
+      if (!profile) {
+        try {
+          profile = await User.create({
+            id: bigIntId,
+            name: phone,        // use phone as temporary name
+            phone: phone,
+            password: password,
+            role: 'customer',
+            area: ''
+          });
+        } catch (createErr) {
+          // If creation fails (e.g. duplicate), try fetching by phone again
+          profile = await User.findByPhone(phone);
+        }
       }
     }
 
-    return data;
+    return { ...data, profile };
   },
 
 
