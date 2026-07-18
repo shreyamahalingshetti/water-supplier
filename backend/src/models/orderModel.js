@@ -18,10 +18,12 @@ const Order = {
         status: data.status || 'pending',
         quantity: data.quantity,
         address: data.address,
-        is_recurring: data.is_recurring !== undefined ? data.is_recurring : false
+        is_recurring: data.is_recurring !== undefined ? data.is_recurring : false,
+        recurring_days: data.recurring_days !== undefined ? data.recurring_days : 0
       })
       .select()
       .single();
+
 
 
 

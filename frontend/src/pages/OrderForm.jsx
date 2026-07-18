@@ -91,7 +91,9 @@ function OrderForm() {
       area,
       special_instructions:  specialInstructions,
       is_recurring:          isRecurring,
+      recurring_days:        isRecurring ? frequencyDays : 0,
     };
+
 
     try {
       // Step 1 — Create the order
