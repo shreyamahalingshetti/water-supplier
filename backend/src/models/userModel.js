@@ -15,10 +15,12 @@ const User = {
         name: data.name,
         phone: data.phone,
         role: data.role || 'customer',
-        area: data.area || null
+        area: data.area || null,
+        created_at: new Date().toISOString()
       })
       .select()
       .single();
+
 
     if (error) {
       throw error;
