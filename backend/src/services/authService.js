@@ -122,6 +122,11 @@ const authService = {
       // If not found, try by phone number (user may have been created with different ID mapping)
       if (!profile) {
         profile = await User.findByPhone(phone);
+        if (profile) {
+          // Auto-align ID to match the JWT sub bigIntId
+          await supabaseAdmin.from('users').update({ id: bigIntId }).eq('phone', phone);
+          profile.id = bigIntId;
+        }
       }
 
       // Still not found — create a placeholder that user can update
@@ -138,6 +143,10 @@ const authService = {
         } catch (createErr) {
           // If creation fails (e.g. duplicate), try fetching by phone again
           profile = await User.findByPhone(phone);
+          if (profile) {
+            await supabaseAdmin.from('users').update({ id: bigIntId }).eq('phone', phone);
+            profile.id = bigIntId;
+          }
         }
       }
     }
@@ -146,24 +155,64 @@ const authService = {
   },
 
 
-  /**
-   * Log in supplier using email and password
-   * @param {string} email - Supplier's email
-   * @param {string} password - Supplier's password
-   */
-  loginSupplier: async (email, password) => {
+  loginSupplier: async (phone, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
+      phone: phone,
       password: password
     });
-
     if (error) {
-      throw error;
+      throw { statusCode: 401, message: error.message };
     }
 
-    // TODO: await Supplier.findByEmail(email) (Verify supplier profile status in local database)
+    let profile = null;
+    if (data && data.user) {
+      const { uuidToBigInt } = require('../utils/uuidHelper');
+      const User = require('../models/userModel');
+      const bigIntId = uuidToBigInt(data.user.id);
 
-    return data;
+      // First try to find by bigint ID
+      profile = await User.findById(bigIntId);
+
+      // If not found, try by phone
+      if (!profile) {
+        profile = await User.findByPhone(phone);
+        if (profile) {
+          // Auto-align ID to match the JWT sub bigIntId
+          await supabaseAdmin.from('users').update({ id: bigIntId }).eq('phone', phone);
+          profile.id = bigIntId;
+        }
+      }
+
+      // Enforce: Must be a supplier to access this portal
+      if (profile && profile.role !== 'supplier') {
+        throw { statusCode: 403, message: 'Access denied. You do not have supplier permissions.' };
+      }
+
+      // Still not found — create a placeholder supplier profile
+      if (!profile) {
+        try {
+          profile = await User.create({
+            id: bigIntId,
+            name: 'Supplier',
+            phone: phone,
+            password: password,
+            role: 'supplier',
+            area: ''
+          });
+        } catch (createErr) {
+          profile = await User.findByPhone(phone);
+          if (profile) {
+            if (profile.role !== 'supplier') {
+              throw { statusCode: 403, message: 'Access denied. You do not have supplier permissions.' };
+            }
+            await supabaseAdmin.from('users').update({ id: bigIntId }).eq('phone', phone);
+            profile.id = bigIntId;
+          }
+        }
+      }
+    }
+
+    return { session: data.session, profile };
   },
 
   /**

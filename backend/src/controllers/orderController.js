@@ -1,5 +1,6 @@
 const orderService = require('../services/orderService');
 const { sendSuccess } = require('../utils/response');
+const { uuidToBigInt } = require('../utils/uuidHelper');
 
 /**
  * Order Controller
@@ -45,7 +46,7 @@ const orderController = {
    */
   getById: async (req, res, next) => {
     try {
-      const { id } = req.params;
+      const id = uuidToBigInt(req.params.id);
       const order = await orderService.getOrderById(id);
       
       return sendSuccess(res, 'Order retrieved successfully', order);
@@ -59,7 +60,7 @@ const orderController = {
    */
   getByCustomer: async (req, res, next) => {
     try {
-      const { customerId } = req.params;
+      const customerId = uuidToBigInt(req.params.customerId);
       const orders = await orderService.getCustomerOrders(customerId);
       
       return sendSuccess(res, 'Customer orders retrieved successfully', orders);
@@ -68,14 +69,12 @@ const orderController = {
     }
   },
 
-  /**
-   * Retrieve today's orders grouped by area (Supplier Dashboard)
-   */
   getToday: async (req, res, next) => {
     try {
-      const groupedOrders = await orderService.getTodayOrdersByArea();
+      const today = new Date().toISOString().split('T')[0];
+      const orders = await orderService.getAllOrders({ date: today });
       
-      return sendSuccess(res, "Today's orders grouped by area retrieved successfully", groupedOrders);
+      return sendSuccess(res, "Today's orders retrieved successfully", orders);
     } catch (error) {
       next(error);
     }
@@ -86,7 +85,7 @@ const orderController = {
    */
   updateStatus: async (req, res, next) => {
     try {
-      const { id } = req.params;
+      const id = uuidToBigInt(req.params.id);
       const { status } = req.body;
       
       const updatedOrder = await orderService.updateOrderStatus(id, status);
@@ -102,7 +101,7 @@ const orderController = {
    */
   delete: async (req, res, next) => {
     try {
-      const { id } = req.params;
+      const id = uuidToBigInt(req.params.id);
       const deletedOrder = await orderService.deleteOrder(id);
       
       return sendSuccess(res, 'Order deleted successfully', deletedOrder);

@@ -1,6 +1,7 @@
 const notificationService = require('../services/notificationService');
 const Notification = require('../models/notificationModel');
 const { sendSuccess, sendError } = require('../utils/response');
+const { uuidToBigInt } = require('../utils/uuidHelper');
 
 /**
  * Notification Controller
@@ -52,7 +53,7 @@ const notificationController = {
    */
   getByCustomer: async (req, res, next) => {
     try {
-      const { customerId } = req.params;
+      const customerId = uuidToBigInt(req.params.customerId);
 
       // Access verification: customers can only view their own logs, suppliers can view any customer logs
       const isSupplier = req.user && req.user.email;

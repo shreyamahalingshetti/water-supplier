@@ -19,7 +19,8 @@ const Order = {
         quantity: data.quantity,
         address: data.address,
         is_recurring: data.is_recurring !== undefined ? data.is_recurring : false,
-        recurring_days: data.recurring_days !== undefined ? data.recurring_days : 0
+        recurring_days: data.recurring_days !== undefined ? data.recurring_days : 0,
+        can_size: data.can_size
       })
       .select()
       .single();
@@ -38,7 +39,7 @@ const Order = {
    * Get all orders with optional filter options
    */
   findAll: async (filters = {}) => {
-    let query = supabase.from('orders').select('*');
+    let query = supabase.from('orders').select('*, users(name)');
 
     if (filters.date) {
       query = query.eq('delivery_date', filters.date);
@@ -59,7 +60,10 @@ const Order = {
       throw error;
     }
 
-    return orders;
+    return orders.map(o => ({
+      ...o,
+      customer: o.users?.name || '—'
+    }));
   },
 
   /**

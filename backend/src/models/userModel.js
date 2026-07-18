@@ -95,6 +95,42 @@ const User = {
       throw error;
     }
 
+    if (users && users.length > 0) {
+      // Fetch all orders to compute order counts per customer
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('customer_id');
+
+      // Fetch active recurring orders to compute recurring badge presence
+      const { data: recurring } = await supabase
+        .from('recurring_orders')
+        .select('customer_id, is_active')
+        .eq('is_active', true);
+
+      const orderCounts = {};
+      if (orders) {
+        orders.forEach(o => {
+          if (o.customer_id) {
+            orderCounts[o.customer_id] = (orderCounts[o.customer_id] || 0) + 1;
+          }
+        });
+      }
+
+      const hasRecurring = {};
+      if (recurring) {
+        recurring.forEach(r => {
+          if (r.customer_id) {
+            hasRecurring[r.customer_id] = true;
+          }
+        });
+      }
+
+      users.forEach(u => {
+        u.total_orders = orderCounts[u.id] || 0;
+        u.has_recurring = hasRecurring[u.id] || false;
+      });
+    }
+
     return users;
   },
 

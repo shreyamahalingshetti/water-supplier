@@ -1,5 +1,6 @@
 const userService = require('../services/userService');
 const { sendSuccess, sendError } = require('../utils/response');
+const { uuidToBigInt } = require('../utils/uuidHelper');
 
 /**
  * User Profile Controller
@@ -67,7 +68,7 @@ const userController = {
    */
   getById: async (req, res, next) => {
     try {
-      const { id } = req.params;
+      const id = uuidToBigInt(req.params.id);
 
       // Access Check: Customers can only retrieve their own profile, suppliers can retrieve any
       const isSupplier = req.user && req.user.email;
@@ -88,7 +89,7 @@ const userController = {
    */
   update: async (req, res, next) => {
     try {
-      const { id } = req.params;
+      const id = uuidToBigInt(req.params.id);
 
       // Access Check: Customers can only update their own profile, suppliers can update any
       const isSupplier = req.user && req.user.email;
@@ -114,7 +115,7 @@ const userController = {
         return sendError(res, 'Access denied. Supplier permissions required to delete users.', 403);
       }
 
-      const { id } = req.params;
+      const id = uuidToBigInt(req.params.id);
       const deletedUser = await userService.deleteUser(id);
       
       return sendSuccess(res, 'User profile deleted successfully', deletedUser);

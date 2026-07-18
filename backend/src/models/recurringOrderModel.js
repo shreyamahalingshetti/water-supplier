@@ -54,14 +54,17 @@ const RecurringOrder = {
   findAll: async () => {
     const { data: recurringOrders, error } = await supabase
       .from('recurring_orders')
-      .select('*')
+      .select('*, users(name)')
       .order('created_at', { ascending: false });
 
     if (error) {
       throw error;
     }
 
-    return recurringOrders;
+    return recurringOrders.map(r => ({
+      ...r,
+      customer: r.users?.name || '—'
+    }));
   },
 
   /**

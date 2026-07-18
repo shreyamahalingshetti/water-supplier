@@ -13,7 +13,7 @@ const DropletIcon = () => (
 
 export default function AdminLogin() {
   const navigate = useNavigate();
-  const [email, setEmail]       = useState('');
+  const [phone, setPhone]       = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw]     = useState(false);
   const [error, setError]       = useState('');
@@ -22,13 +22,19 @@ export default function AdminLogin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    if (phone.length < 10) {
+      setError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const res = await fetch(`${API_URL}/auth/supplier-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+        body: JSON.stringify({ phone: '+91' + phone.trim(), password }),
       });
 
       const data = await res.json();
@@ -36,7 +42,7 @@ export default function AdminLogin() {
       if (res.status === 401 || !res.ok) {
         throw new Error(
           res.status === 401
-            ? 'Invalid email or password.'
+            ? 'Invalid phone number or password.'
             : data.message || 'Login failed. Please try again.'
         );
       }
@@ -44,6 +50,9 @@ export default function AdminLogin() {
       // Persist auth
       if (data.data?.session?.access_token) {
         localStorage.setItem('accessToken', data.data.session.access_token);
+      }
+      if (data.data?.profile) {
+        localStorage.setItem('userProfile', JSON.stringify(data.data.profile));
       }
       localStorage.setItem('userRole', 'supplier');
       sessionStorage.setItem('jalSeva_adminAuth', 'true');
@@ -109,26 +118,27 @@ export default function AdminLogin() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5" id="admin-login-form">
-              {/* Email */}
+              {/* Phone Number */}
               <div className="space-y-1.5">
                 <label className="block text-sm font-semibold" style={{ color: '#8D6E63' }}>
-                  Admin Email
+                  Admin Mobile Number
                 </label>
                 <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4FC3F7" strokeWidth="2">
-                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                      <polyline points="22,6 12,13 2,6" />
-                    </svg>
-                  </div>
+                  <span
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold pr-2.5 border-r"
+                    style={{ color: '#8D6E63', borderColor: '#E0E0E0' }}
+                  >
+                    +91
+                  </span>
                   <input
-                    id="admin-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@jalseva.com"
+                    id="admin-phone"
+                    type="tel"
+                    maxLength="10"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    placeholder="9876543210"
                     required
-                    className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all duration-200"
+                    className="w-full pl-16 pr-4 py-3 rounded-xl text-sm outline-none transition-all duration-200"
                     style={{
                       border: '2px solid #E0E0E0',
                       background: '#FAFAFA',

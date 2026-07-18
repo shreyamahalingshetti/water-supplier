@@ -111,9 +111,21 @@ const NAV_ITEMS = [
 const Sidebar = ({ active, setActive, sidebarOpen, setSidebarOpen, unreadCount }) => {
   const navigate = useNavigate();
 
+  const profile = useMemo(() => {
+    try {
+      const cached = localStorage.getItem('userProfile');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return { name: 'Supplier', phone: '' };
+  }, []);
+
+  const initials = (profile.name || 'S').slice(0, 1).toUpperCase();
+
   const handleLogout = () => {
     sessionStorage.removeItem('jalSeva_adminAuth');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('accessToken');
     navigate('/admin/login');
   };
 
@@ -192,10 +204,10 @@ const Sidebar = ({ active, setActive, sidebarOpen, setSidebarOpen, unreadCount }
         {/* Admin info + Logout */}
         <div className="px-4 py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ background: C.blue }}>A</div>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm" style={{ background: C.blue }}>{initials}</div>
             <div>
-              <div className="text-white text-sm font-semibold">Admin</div>
-              <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>admin@jalseva.com</div>
+              <div className="text-white text-sm font-semibold">{profile.name}</div>
+              <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>{profile.phone}</div>
             </div>
           </div>
           <button
@@ -221,55 +233,67 @@ const Sidebar = ({ active, setActive, sidebarOpen, setSidebarOpen, unreadCount }
 /* ══════════════════════════════════════════════════════════════
    TOPBAR
 ══════════════════════════════════════════════════════════════ */
-const Topbar = ({ activeLabel, setSidebarOpen, unreadCount, setActive }) => (
-  <header
-    className="sticky top-0 z-10 flex items-center gap-4 px-4 sm:px-6 py-3.5 border-b"
-    style={{ background: C.white, borderColor: '#F0F0F0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
-  >
-    {/* Hamburger */}
-    <button
-      className="lg:hidden p-1.5 rounded-lg"
-      style={{ color: C.brown }}
-      onClick={() => setSidebarOpen(true)}
-      aria-label="Open sidebar"
+const Topbar = ({ activeLabel, setSidebarOpen, unreadCount, setActive }) => {
+  const profile = useMemo(() => {
+    try {
+      const cached = localStorage.getItem('userProfile');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return { name: 'Supplier' };
+  }, []);
+
+  const initials = (profile.name || 'S').slice(0, 1).toUpperCase();
+
+  return (
+    <header
+      className="sticky top-0 z-10 flex items-center gap-4 px-4 sm:px-6 py-3.5 border-b"
+      style={{ background: C.white, borderColor: '#F0F0F0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
     >
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <line x1="3" y1="6" x2="21" y2="6" strokeLinecap="round"/>
-        <line x1="3" y1="12" x2="21" y2="12" strokeLinecap="round"/>
-        <line x1="3" y1="18" x2="21" y2="18" strokeLinecap="round"/>
-      </svg>
-    </button>
-
-    <div>
-      <h1 className="font-extrabold text-base sm:text-lg leading-tight" style={{ color: C.brown }}>{activeLabel}</h1>
-      <p className="text-xs" style={{ color: C.brownLt }}>
-        {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-      </p>
-    </div>
-
-    <div className="ml-auto flex items-center gap-3">
-      {/* Notification bell */}
+      {/* Hamburger */}
       <button
-        id="topbar-notifications"
-        onClick={() => setActive('notifications')}
-        className="relative p-2 rounded-xl transition-colors"
-        style={{ background: unreadCount > 0 ? C.blueBg : 'transparent', color: C.brown }}
+        className="lg:hidden p-1.5 rounded-lg"
+        style={{ color: C.brown }}
+        onClick={() => setSidebarOpen(true)}
+        aria-label="Open sidebar"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="3" y1="6" x2="21" y2="6" strokeLinecap="round"/>
+          <line x1="3" y1="12" x2="21" y2="12" strokeLinecap="round"/>
+          <line x1="3" y1="18" x2="21" y2="18" strokeLinecap="round"/>
         </svg>
-        {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 text-[10px] font-bold rounded-full flex items-center justify-center text-white" style={{ background: '#EF5350' }}>
-            {unreadCount}
-          </span>
-        )}
       </button>
-      {/* Avatar */}
-      <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ background: C.blue }}>A</div>
-    </div>
-  </header>
-);
+
+      <div>
+        <h1 className="font-extrabold text-base sm:text-lg leading-tight" style={{ color: C.brown }}>{activeLabel}</h1>
+        <p className="text-xs" style={{ color: C.brownLt }}>
+          {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
+      </div>
+
+      <div className="ml-auto flex items-center gap-3">
+        {/* Notification bell */}
+        <button
+          id="topbar-notifications"
+          onClick={() => setActive('notifications')}
+          className="relative p-2 rounded-xl transition-colors"
+          style={{ background: unreadCount > 0 ? C.blueBg : 'transparent', color: C.brown }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 text-[10px] font-bold rounded-full flex items-center justify-center text-white" style={{ background: '#EF5350' }}>
+              {unreadCount}
+            </span>
+          )}
+        </button>
+        {/* Avatar */}
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm" style={{ background: C.blue }}>{initials}</div>
+      </div>
+    </header>
+  );
+};
 
 /* ══════════════════════════════════════════════════════════════
    STAT CARDS
@@ -452,7 +476,7 @@ const TodaysOrdersView = ({ orders: allOrders, onMarkDelivered }) => {
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <path d="M12 2L6 10C4 13 4 18 8 20.5C10 21.7 14 21.7 16 20.5C20 18 20 13 18 10L12 2Z"/>
                         </svg>
-                        {order.cans} can{order.cans !== 1 ? 's' : ''}
+                        {order.cans} can{order.cans !== 1 ? 's' : ''} {order.can_size ? `(${order.can_size})` : ''}
                       </span>
                       <span className="inline-flex items-center gap-1" style={{ color: C.brownLt }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -568,7 +592,7 @@ const AllOrdersView = ({ orders, onMarkDelivered }) => {
                   <td className="px-4 py-3 font-mono text-xs font-semibold" style={{ color: C.blue }}>{o.id}</td>
                   <td className="px-4 py-3 font-semibold whitespace-nowrap" style={{ color: C.brown }}>{o.customer}</td>
                   <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: C.brownLt }}>{o.area}</td>
-                  <td className="px-4 py-3 font-bold" style={{ color: C.brown }}>{o.cans}</td>
+                  <td className="px-4 py-3 font-bold" style={{ color: C.brown }}>{o.cans} {o.can_size ? `(${o.can_size})` : ''}</td>
                   <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: C.brownLt }}>{o.date}</td>
                   <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: C.brownLt }}>{o.timeSlot}</td>
                   <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
@@ -904,7 +928,7 @@ const DashboardOverview = ({ orders, stats, onMarkDelivered, setActive }) => {
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                       <td className="px-4 py-2.5 font-semibold whitespace-nowrap" style={{ color: C.brown }}>{o.customer}</td>
                       <td className="px-4 py-2.5 text-xs" style={{ color: C.brownLt }}>{o.area}</td>
-                      <td className="px-4 py-2.5 font-bold" style={{ color: C.brown }}>{o.cans}</td>
+                      <td className="px-4 py-2.5 font-bold" style={{ color: C.brown }}>{o.cans} {o.can_size ? `(${o.can_size})` : ''}</td>
                       <td className="px-4 py-2.5 text-xs whitespace-nowrap" style={{ color: C.brownLt }}>{o.timeSlot}</td>
                       <td className="px-4 py-2.5"><StatusBadge status={o.status} /></td>
                       <td className="px-4 py-2.5">
@@ -1020,9 +1044,15 @@ const DashboardOverview = ({ orders, stats, onMarkDelivered, setActive }) => {
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
-  // Auth guard — must have both sessionStorage flag AND accessToken
+  // Auth guard — must have both accessToken and supplier role
   useEffect(() => {
-    if (!sessionStorage.getItem('jalSeva_adminAuth') || !localStorage.getItem('accessToken')) {
+    const token = localStorage.getItem('accessToken');
+    const role = localStorage.getItem('userRole');
+    if (!token || role !== 'supplier') {
+      sessionStorage.removeItem('jalSeva_adminAuth');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userProfile');
       navigate('/admin/login', { replace: true });
     }
   }, [navigate]);

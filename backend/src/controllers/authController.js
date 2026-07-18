@@ -81,18 +81,15 @@ const authController = {
     }
   },
 
-  /**
-   * Authenticate supplier using email and password
-   */
   supplierLogin: async (req, res, next) => {
     try {
-      const { email, password } = req.body;
+      const { phone, password } = req.body;
 
-      if (!email || !password) {
-        return sendError(res, 'Email and password are required', 400);
+      if (!phone || !password) {
+        return sendError(res, 'Phone number and password are required', 400);
       }
 
-      const data = await authService.loginSupplier(email, password);
+      const data = await authService.loginSupplier(phone, password);
 
       return sendSuccess(res, 'Supplier authenticated successfully', data);
     } catch (error) {

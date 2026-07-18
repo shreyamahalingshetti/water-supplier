@@ -411,7 +411,7 @@ function Dashboard() {
                         <div key={order.id} className="flex items-center justify-between px-6 py-4 hover:bg-[#F5F7FA] transition-colors">
                           <div className="space-y-1">
                             <div className="font-semibold text-[#3E2723] text-sm">
-                              #{order.id}&nbsp;·&nbsp;{order.quantity} Can{order.quantity > 1 ? 's' : ''}
+                              #{order.id}&nbsp;·&nbsp;{order.quantity} Can{order.quantity > 1 ? 's' : ''} ({order.can_size || '20L'})
                             </div>
                             <div className="text-xs text-[#3E2723]/60">
                               {order.delivery_date}&nbsp;|&nbsp;{order.time_slot}

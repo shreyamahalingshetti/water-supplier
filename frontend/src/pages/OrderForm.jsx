@@ -1,158 +1,121 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 /**
  * OrderForm Component for Jal Seva
- * Adheres strictly to the 3-color scheme:
- * 1. Light water blue (#4FC3F7) - accents, buttons, highlights, water can svg
- * 2. White (#FFFFFF) - background, card
- * 3. Warm brown (#3E2723) - headings, labels, summary details, secondary text
+ * Color scheme (strict):
+ * 1. Water blue (#4FC3F7) — accents, selected state, buttons, highlights
+ * 2. White (#FFFFFF)     — backgrounds, card, unselected options
+ * 3. Warm brown (#3E2723) — headings, labels, text, borders
  */
+
+/* Can size options with pricing */
+const CAN_SIZES = [
+  { value: '20L', label: '20L Can', price: 70, popular: true },
+  { value: '15L', label: '15L Can', price: 55, popular: false },
+  { value: '10L', label: '10L Can', price: 40, popular: false },
+  { value: '5L',  label: '5L Can',  price: 25, popular: false },
+];
+
 function OrderForm() {
   const navigate = useNavigate();
 
-  // Date helper to get tomorrow's date string in YYYY-MM-DD format
+  // Date helper — tomorrow's date in YYYY-MM-DD
   const getTomorrowDateString = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const yyyy = tomorrow.getFullYear();
-    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
-    const dd = String(tomorrow.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
   };
 
-  // Pre-fill area from the user's saved profile (read-only — set during signup)
+  // Pre-fill area from signed-in user's profile (read-only)
   const getUserArea = () => {
     try {
       const cached = localStorage.getItem('userProfile');
-      if (cached) {
-        const profile = JSON.parse(cached);
-        return profile.area || '';
-      }
+      if (cached) return JSON.parse(cached).area || '';
     } catch {}
     return '';
   };
 
-  // Form states
-  const [cans, setCans] = useState(1);
-  const [deliveryDate, setDeliveryDate] = useState(getTomorrowDateString());
-  const [timeSlot, setTimeSlot] = useState('Morning 7am-10am');
-  const [area] = useState(getUserArea); // Read-only — from user profile
-  const [specialInstructions, setSpecialInstructions] = useState('');
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [frequencyDays, setFrequencyDays] = useState(7);
-  const [loading, setLoading] = useState(false);
-  const [orderPlaced, setOrderPlaced] = useState(false);
-  const [placedOrder, setPlacedOrder] = useState(null);  // API response data
-  const [errors, setErrors] = useState({});
-  const [apiError, setApiError] = useState('');
+  /* ── Form state ── */
+  const [cans,               setCans]               = useState(1);
+  const [canSize,            setCanSize]            = useState('20L');
+  const [deliveryDate,       setDeliveryDate]       = useState(getTomorrowDateString());
+  const [timeSlot,           setTimeSlot]           = useState('Morning 7am-10am');
+  const [area]                                      = useState(getUserArea);
+  const [specialInstructions,setSpecialInstructions]= useState('');
+  const [isRecurring,        setIsRecurring]        = useState(false);
+  const [frequencyDays,      setFrequencyDays]      = useState(7);
+  const [loading,            setLoading]            = useState(false);
+  const [orderPlaced,        setOrderPlaced]        = useState(false);
+  const [placedOrder,        setPlacedOrder]        = useState(null);
+  const [errors,             setErrors]             = useState({});
+  const [apiError,           setApiError]           = useState('');
 
+  /* ── Derived pricing ── */
+  const selectedSize   = CAN_SIZES.find(s => s.value === canSize) || CAN_SIZES[0];
+  const pricePerCan    = selectedSize.price;
+  const totalPrice     = cans * pricePerCan;
+
+  /* ── Validation ── */
   const validateForm = () => {
-    const tempErrors = {};
-    if (cans < 1) {
-      tempErrors.cans = 'Number of cans must be at least 1';
-    }
+    const e = {};
+    if (cans < 1)           e.cans         = 'Number of cans must be at least 1';
     if (!deliveryDate) {
-      tempErrors.deliveryDate = 'Delivery date is required';
+      e.deliveryDate = 'Delivery date is required';
     } else {
-      const selected = new Date(deliveryDate);
-      const tomorrow = new Date(getTomorrowDateString());
-      // Reset hours to compare dates only
-      selected.setHours(0, 0, 0, 0);
-      tomorrow.setHours(0, 0, 0, 0);
-      if (selected < tomorrow) {
-        tempErrors.deliveryDate = 'Delivery date cannot be today or in the past';
-      }
+      const sel = new Date(deliveryDate); sel.setHours(0,0,0,0);
+      const tom = new Date(getTomorrowDateString()); tom.setHours(0,0,0,0);
+      if (sel < tom) e.deliveryDate = 'Delivery date cannot be today or in the past';
     }
-    if (!area.trim()) {
-      tempErrors.area = 'Delivery area is required';
-    }
-    if (isRecurring && frequencyDays < 1) {
-      tempErrors.frequencyDays = 'Delivery frequency must be at least 1 day';
-    }
-
-    setErrors(tempErrors);
-    return Object.keys(tempErrors).length === 0;
+    if (!area.trim())       e.area         = 'Delivery area is required';
+    if (isRecurring && frequencyDays < 1)
+                            e.frequencyDays = 'Delivery frequency must be at least 1 day';
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
-  const handlePlaceOrderSubmit = async (e) => {
-    e.preventDefault();
+  /* ── Submit ── */
+  const handlePlaceOrderSubmit = async (ev) => {
+    ev.preventDefault();
     if (!validateForm()) return;
 
-    // Guard: token must exist
     const token = localStorage.getItem('accessToken');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
+    if (!token) { navigate('/login'); return; }
 
     setApiError('');
     setLoading(true);
 
-    const authHeaders = {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 
     const orderBody = {
-      quantity:              cans,
-      delivery_date:         deliveryDate,
-      time_slot:             timeSlot,
+      quantity:             cans,
+      can_size:             canSize,
+      delivery_date:        deliveryDate,
+      time_slot:            timeSlot,
       area,
-      special_instructions:  specialInstructions,
-      is_recurring:          isRecurring,
-      recurring_days:        isRecurring ? frequencyDays : 0,
+      special_instructions: specialInstructions,
+      is_recurring:         isRecurring,
+      recurring_days:       isRecurring ? frequencyDays : 0,
     };
 
-
     try {
-      // Step 1 — Create the order
-      const orderRes = await fetch(`${API_URL}/orders`, {
-        method:  'POST',
-        headers: authHeaders,
-        body:    JSON.stringify(orderBody),
-      });
-
-      if (orderRes.status === 401) {
-        localStorage.removeItem('accessToken');
-        navigate('/login');
-        return;
-      }
-
+      const orderRes  = await fetch(`${API_URL}/orders`, { method: 'POST', headers, body: JSON.stringify(orderBody) });
+      if (orderRes.status === 401) { localStorage.removeItem('accessToken'); navigate('/login'); return; }
       const orderData = await orderRes.json();
-      if (!orderRes.ok) {
-        throw new Error(orderData.message || 'Failed to place order. Please try again.');
-      }
+      if (!orderRes.ok) throw new Error(orderData.message || 'Failed to place order. Please try again.');
 
-      // Step 2 — If recurring, also create the schedule
       if (isRecurring) {
-        const recRes = await fetch(`${API_URL}/recurring-orders`, {
-          method:  'POST',
-          headers: authHeaders,
-          body: JSON.stringify({
-            quantity:      cans,
-            time_slot:     timeSlot,
-            area,
-            frequency_days: frequencyDays,
-          }),
+        const recRes  = await fetch(`${API_URL}/recurring-orders`, {
+          method: 'POST', headers,
+          body: JSON.stringify({ quantity: cans, can_size: canSize, time_slot: timeSlot, area, frequency_days: frequencyDays }),
         });
-
-        if (recRes.status === 401) {
-          localStorage.removeItem('accessToken');
-          navigate('/login');
-          return;
-        }
-
+        if (recRes.status === 401) { localStorage.removeItem('accessToken'); navigate('/login'); return; }
         const recData = await recRes.json();
-        if (!recRes.ok) {
-          throw new Error(recData.message || 'Order placed but failed to set recurring schedule.');
-        }
+        if (!recRes.ok) throw new Error(recData.message || 'Order placed but failed to set recurring schedule.');
       }
 
-      // Success
       setPlacedOrder(orderData.data || orderData);
       setOrderPlaced(true);
     } catch (err) {
@@ -162,30 +125,18 @@ function OrderForm() {
     }
   };
 
+  /* ── Render ── */
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[#FFFFFF]">
       <div className="w-full max-w-md p-6 bg-[#FFFFFF] border border-[#3E2723]/30 rounded-xl shadow-md flex flex-col items-center">
-        
-        {/* Header & Logo */}
+
+        {/* Header */}
         <div className="mb-4 text-center flex flex-col items-center">
-          {/* Water Can SVG Illustration */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#4FC3F7"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-12 h-12 mb-2 text-[#4FC3F7]"
-          >
-            {/* Can Spout Cap */}
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#4FC3F7"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 mb-2">
             <rect x="10" y="2" width="4" height="2" rx="0.5" fill="#4FC3F7" />
-            {/* Can Neck */}
             <path d="M11 4h2v2h-2z" />
-            {/* Can Main Body */}
             <path d="M7 8a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v11a3 3 0 0 1-3 3H10a3 3 0 0 1-3-3z" />
-            {/* Water Levels */}
             <path d="M7 14c1.5-0.75 2.5 0.75 4 0s2.5-0.75 4 0 2.5 0.75 4 0" />
             <path d="M7 17.5c1.5-0.75 2.5 0.75 4 0s2.5-0.75 4 0 2.5 0.75 4 0" />
           </svg>
@@ -193,9 +144,9 @@ function OrderForm() {
           <p className="text-sm text-[#3E2723]/80">Fresh water, delivered to your door</p>
         </div>
 
+        {/* ── Success screen ── */}
         {orderPlaced ? (
           <div className="w-full text-center space-y-4">
-            {/* Success icon */}
             <div className="flex items-center justify-center">
               <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: '#E8F5E9' }}>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" strokeWidth="2.5">
@@ -214,7 +165,12 @@ function OrderForm() {
               {placedOrder?.id && (
                 <div>Order ID: <span className="font-semibold text-[#4FC3F7]">#{placedOrder.id}</span></div>
               )}
-              <div>Cans: <span className="font-semibold">{cans}</span></div>
+              <div>Quantity: <span className="font-semibold">{cans} Can(s)</span></div>
+              <div>Can Size: <span className="font-semibold">{canSize}</span></div>
+              <div>Price per Can: <span className="font-semibold">₹{pricePerCan}</span></div>
+              <div className="font-bold text-[#3E2723] border-t border-[#3E2723]/20 pt-1 mt-1">
+                Total: <span className="text-[#4FC3F7]">₹{totalPrice}</span>
+              </div>
               <div>Date: <span className="font-semibold">{deliveryDate}</span></div>
               <div>Slot: <span className="font-semibold">{timeSlot}</span></div>
               <div>Locality: <span className="font-semibold">{area}</span></div>
@@ -226,24 +182,16 @@ function OrderForm() {
               <button
                 onClick={() => navigate('/dashboard')}
                 className="flex-1 py-3 bg-[#FFFFFF] text-[#4FC3F7] font-bold rounded-lg border-2 border-[#4FC3F7] hover:bg-[#F0F9FF] active:scale-95 transition-all outline-none"
-              >
-                My Orders
-              </button>
+              >My Orders</button>
               <button
-                onClick={() => {
-                  setOrderPlaced(false);
-                  setPlacedOrder(null);
-                  setApiError('');
-                  setCans(1);
-                  setIsRecurring(false);
-                }}
+                onClick={() => { setOrderPlaced(false); setPlacedOrder(null); setApiError(''); setCans(1); setCanSize('20L'); setIsRecurring(false); }}
                 className="flex-1 py-3 bg-[#4FC3F7] text-[#FFFFFF] font-bold rounded-lg hover:bg-[#0288D1] active:scale-95 transition-all outline-none focus:ring-2 focus:ring-[#4FC3F7]"
-              >
-                Book Another
-              </button>
+              >Book Another</button>
             </div>
           </div>
+
         ) : (
+          /* ── Order form ── */
           <form onSubmit={handlePlaceOrderSubmit} className="w-full space-y-4">
             <h2 className="text-lg font-bold text-[#3E2723] text-center border-b border-[#3E2723]/20 pb-2">
               Place Your Order
@@ -251,38 +199,88 @@ function OrderForm() {
 
             {/* Number of Cans */}
             <div>
-              <label className="block text-sm font-semibold text-[#3E2723] mb-1">Number of Cans (20L)</label>
+              <label className="block text-sm font-semibold text-[#3E2723] mb-1">Number of Cans</label>
               <input
+                id="cans-input"
                 type="number"
                 min="1"
                 value={cans}
                 onChange={(e) => setCans(parseInt(e.target.value) || 0)}
                 className="w-full px-4 py-2 bg-[#FFFFFF] border border-[#3E2723] rounded-lg focus:ring-2 focus:ring-[#4FC3F7] focus:border-[#4FC3F7] transition-all text-base outline-none text-[#3E2723]"
               />
-              {errors.cans && (
-                <span className="text-xs text-[#3E2723] mt-1 block font-semibold">* {errors.cans}</span>
-              )}
+              {errors.cans && <span className="text-xs text-[#3E2723] mt-1 block font-semibold">* {errors.cans}</span>}
+            </div>
+
+            {/* Can Size Selection */}
+            <div>
+              <label className="block text-sm font-semibold text-[#3E2723] mb-2">Can Size</label>
+              <div className="grid grid-cols-2 gap-2">
+                {CAN_SIZES.map((size) => {
+                  const selected = canSize === size.value;
+                  return (
+                    <label
+                      key={size.value}
+                      htmlFor={`can-size-${size.value}`}
+                      className={`relative flex flex-col items-center justify-center px-3 py-3 rounded-lg border-2 cursor-pointer transition-all select-none ${
+                        selected
+                          ? 'border-[#4FC3F7] bg-[#f0f9ff]'
+                          : 'border-[#3E2723]/30 bg-[#FFFFFF] hover:border-[#4FC3F7]/60'
+                      }`}
+                    >
+                      <input
+                        id={`can-size-${size.value}`}
+                        type="radio"
+                        name="can_size"
+                        value={size.value}
+                        checked={selected}
+                        onChange={() => setCanSize(size.value)}
+                        className="sr-only"
+                      />
+                      {/* Popular badge */}
+                      {size.popular && (
+                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#4FC3F7] text-[#FFFFFF] text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                          MOST POPULAR
+                        </span>
+                      )}
+                      {/* Selected checkmark */}
+                      {selected && (
+                        <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#4FC3F7] flex items-center justify-center">
+                          <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2">
+                            <polyline points="1.5 5 4 7.5 8.5 2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                      )}
+                      <span className={`text-base font-bold ${selected ? 'text-[#4FC3F7]' : 'text-[#3E2723]'}`}>
+                        {size.label}
+                      </span>
+                      <span className={`text-sm font-semibold mt-0.5 ${selected ? 'text-[#3E2723]' : 'text-[#3E2723]/70'}`}>
+                        ₹{size.price}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Delivery Date */}
             <div>
               <label className="block text-sm font-semibold text-[#3E2723] mb-1">Delivery Date</label>
               <input
+                id="delivery-date-input"
                 type="date"
                 min={getTomorrowDateString()}
                 value={deliveryDate}
                 onChange={(e) => setDeliveryDate(e.target.value)}
                 className="w-full px-4 py-2 bg-[#FFFFFF] border border-[#3E2723] rounded-lg focus:ring-2 focus:ring-[#4FC3F7] focus:border-[#4FC3F7] transition-all text-base outline-none text-[#3E2723]"
               />
-              {errors.deliveryDate && (
-                <span className="text-xs text-[#3E2723] mt-1 block font-semibold">* {errors.deliveryDate}</span>
-              )}
+              {errors.deliveryDate && <span className="text-xs text-[#3E2723] mt-1 block font-semibold">* {errors.deliveryDate}</span>}
             </div>
 
-            {/* Time Slot Selection */}
+            {/* Time Slot */}
             <div>
               <label className="block text-sm font-semibold text-[#3E2723] mb-1">Preferred Time Slot</label>
               <select
+                id="time-slot-select"
                 value={timeSlot}
                 onChange={(e) => setTimeSlot(e.target.value)}
                 className="w-full px-4 py-2 bg-[#FFFFFF] border border-[#3E2723] rounded-lg focus:ring-2 focus:ring-[#4FC3F7] focus:border-[#4FC3F7] transition-all text-base outline-none text-[#3E2723]"
@@ -293,7 +291,7 @@ function OrderForm() {
               </select>
             </div>
 
-            {/* Delivery Area/Locality — read-only, sourced from user profile */}
+            {/* Delivery Area — read-only from user profile */}
             <div>
               <label className="block text-sm font-semibold text-[#3E2723] mb-1">
                 Delivery Area/Locality
@@ -312,8 +310,7 @@ function OrderForm() {
               />
             </div>
 
-
-            {/* Special Instructions (Optional) */}
+            {/* Special Instructions */}
             <div>
               <label className="block text-sm font-semibold text-[#3E2723] mb-1">Special Instructions (Optional)</label>
               <textarea
@@ -325,29 +322,26 @@ function OrderForm() {
               />
             </div>
 
-            {/* Recurring Order Toggle Switch */}
+            {/* Recurring Toggle */}
             <div className="flex items-center justify-between border-t border-[#3E2723]/20 pt-3">
               <span className="text-sm font-semibold text-[#3E2723]">Set as Recurring Order?</span>
               <button
                 type="button"
+                id="recurring-toggle"
                 onClick={() => setIsRecurring(!isRecurring)}
                 className={`w-14 h-8 flex items-center rounded-full p-1 transition-all duration-300 ${
                   isRecurring ? 'bg-[#4FC3F7]' : 'bg-[#FFFFFF] border border-[#3E2723]'
                 }`}
               >
-                <div
-                  className={`w-6 h-6 rounded-full transition-all duration-300 flex items-center justify-center text-[9px] font-bold ${
-                    isRecurring
-                      ? 'translate-x-6 bg-[#FFFFFF] text-[#4FC3F7]'
-                      : 'translate-x-0 bg-[#3E2723] text-[#FFFFFF]'
-                  }`}
-                >
+                <div className={`w-6 h-6 rounded-full transition-all duration-300 flex items-center justify-center text-[9px] font-bold ${
+                  isRecurring ? 'translate-x-6 bg-[#FFFFFF] text-[#4FC3F7]' : 'translate-x-0 bg-[#3E2723] text-[#FFFFFF]'
+                }`}>
                   {isRecurring ? 'YES' : 'NO'}
                 </div>
               </button>
             </div>
 
-            {/* Recurring Frequency Frequency Days */}
+            {/* Frequency Days (shown only when recurring) */}
             {isRecurring && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-200">
                 <label className="block text-sm font-semibold text-[#3E2723] mb-1">Deliver every X days</label>
@@ -364,42 +358,67 @@ function OrderForm() {
               </div>
             )}
 
-            {/* Dynamic Summary Section */}
+            {/* ── Order Summary ── */}
             <div className="border-t border-[#3E2723]/30 pt-3 text-[#3E2723]">
               <div className="text-xs font-bold uppercase tracking-wider mb-2">Order Summary</div>
-              <div className="bg-[#FFFFFF] p-3 border border-[#3E2723]/30 rounded-lg text-xs space-y-1">
-                <div>Quantity: <span className="font-semibold">{cans} Can(s)</span></div>
-                <div>Schedule: <span className="font-semibold">{deliveryDate || 'Select Date'} | {timeSlot}</span></div>
-                <div>Location: <span className="font-semibold">{area || 'Select Area'}</span></div>
+              <div className="bg-[#FFFFFF] p-3 border border-[#3E2723]/30 rounded-lg text-sm text-[#3E2723] space-y-1.5">
+                <div className="flex justify-between">
+                  <span>Quantity</span>
+                  <span className="font-semibold">{cans} Can(s)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Can Size</span>
+                  <span className="font-semibold">{canSize}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Price per Can</span>
+                  <span className="font-semibold">₹{pricePerCan}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Schedule</span>
+                  <span className="font-semibold text-xs">{deliveryDate || '—'} · {timeSlot}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Location</span>
+                  <span className="font-semibold">{area || '—'}</span>
+                </div>
                 {isRecurring && (
-                  <div className="text-[#4FC3F7] font-semibold">
-                    ★ Recurring subscription: Delivers every {frequencyDays} days
+                  <div className="text-[#4FC3F7] font-semibold text-xs">
+                    ★ Recurring: every {frequencyDays} days
                   </div>
                 )}
+                {/* Total price row */}
+                <div className="flex justify-between items-center border-t border-[#3E2723]/20 pt-2 mt-1">
+                  <span className="font-bold text-[#3E2723]">Total</span>
+                  <span className="text-lg font-bold text-[#4FC3F7]">₹{totalPrice}</span>
+                </div>
+                <div className="text-xs text-[#3E2723]/60 text-right">
+                  {cans} × ₹{pricePerCan} = ₹{totalPrice}
+                </div>
               </div>
             </div>
 
-            {/* API error banner */}
+            {/* API error */}
             {apiError && (
-              <div className="flex items-start gap-2 px-4 py-3 rounded-lg text-sm font-medium bg-red-50 border border-red-200 text-red-700">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0">
+              <div className="flex items-start gap-2 px-4 py-3 rounded-lg text-sm font-medium bg-[#f0f9ff] border border-[#4FC3F7] text-[#3E2723]">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4FC3F7" strokeWidth="2" className="mt-0.5 shrink-0">
                   <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                 </svg>
                 {apiError}
               </div>
             )}
 
-            {/* Place Order Submit Button */}
+            {/* Submit */}
             <button
+              id="place-order-btn"
               type="submit"
               disabled={loading}
               className="w-full py-3 bg-[#4FC3F7] text-[#FFFFFF] font-bold rounded-lg hover:bg-[#0288D1] active:scale-95 transition-all flex items-center justify-center gap-2 outline-none focus:ring-2 focus:ring-[#4FC3F7] shadow-md"
             >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-[#FFFFFF]/30 border-t-[#FFFFFF] rounded-full animate-spin" />
-              ) : (
-                isRecurring ? 'Place Recurring Order' : 'Place Order'
-              )}
+              {loading
+                ? <div className="w-5 h-5 border-2 border-[#FFFFFF]/30 border-t-[#FFFFFF] rounded-full animate-spin" />
+                : isRecurring ? 'Place Recurring Order' : 'Place Order'
+              }
             </button>
           </form>
         )}

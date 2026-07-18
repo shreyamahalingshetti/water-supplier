@@ -1,5 +1,6 @@
 const recurringOrderService = require('../services/recurringOrderService');
 const { sendSuccess } = require('../utils/response');
+const { uuidToBigInt } = require('../utils/uuidHelper');
 
 /**
  * RecurringOrder Controller
@@ -44,7 +45,7 @@ const recurringOrderController = {
    */
   getByCustomer: async (req, res, next) => {
     try {
-      const { customerId } = req.params;
+      const customerId = uuidToBigInt(req.params.customerId);
       const recurringOrders = await recurringOrderService.getCustomerRecurringOrders(customerId);
       
       return sendSuccess(res, 'Customer recurring orders retrieved successfully', recurringOrders);
@@ -58,7 +59,7 @@ const recurringOrderController = {
    */
   getById: async (req, res, next) => {
     try {
-      const { id } = req.params;
+      const id = uuidToBigInt(req.params.id);
       const recurringOrder = await recurringOrderService.getRecurringOrderById(id);
       
       return sendSuccess(res, 'Recurring order retrieved successfully', recurringOrder);
@@ -72,7 +73,7 @@ const recurringOrderController = {
    */
   pause: async (req, res, next) => {
     try {
-      const { id } = req.params;
+      const id = uuidToBigInt(req.params.id);
       const pausedOrder = await recurringOrderService.pauseRecurringOrder(id);
       
       return sendSuccess(res, 'Recurring order paused successfully', pausedOrder);
@@ -86,7 +87,7 @@ const recurringOrderController = {
    */
   resume: async (req, res, next) => {
     try {
-      const { id } = req.params;
+      const id = uuidToBigInt(req.params.id);
       const resumedOrder = await recurringOrderService.resumeRecurringOrder(id);
       
       return sendSuccess(res, 'Recurring order resumed successfully', resumedOrder);
@@ -100,7 +101,7 @@ const recurringOrderController = {
    */
   delete: async (req, res, next) => {
     try {
-      const { id } = req.params;
+      const id = uuidToBigInt(req.params.id);
       const deletedOrder = await recurringOrderService.deleteRecurringOrder(id);
       
       return sendSuccess(res, 'Recurring order deleted successfully', deletedOrder);

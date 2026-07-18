@@ -14,19 +14,6 @@ const userRoutes = require('./src/routes/userRoutes');
 
 const app = express();
 
-// Route Parameter translation for UUIDs to database-compatible BigInt strings
-app.param('id', (req, res, next, id) => {
-  const { uuidToBigInt } = require('./src/utils/uuidHelper');
-  req.params.id = uuidToBigInt(id);
-  next();
-});
-
-app.param('customerId', (req, res, next, customerId) => {
-  const { uuidToBigInt } = require('./src/utils/uuidHelper');
-  req.params.customerId = uuidToBigInt(customerId);
-  next();
-});
-
 // Security Headers
 app.use(helmet());
 

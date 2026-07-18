@@ -25,6 +25,17 @@ const authMiddleware = async (req, res, next) => {
     // Convert Supabase UUID to database-compatible bigint string
     user.id = uuidToBigInt(user.id);
 
+    // Look up role in the database profile
+    const User = require('../models/userModel');
+    const dbProfile = await User.findById(user.id);
+    if (dbProfile) {
+      user.role = dbProfile.role;
+      // If user is a supplier, ensure email is populated so legacy controller checks pass
+      if (dbProfile.role === 'supplier' && !user.email) {
+        user.email = dbProfile.phone || 'supplier@jalseva.com';
+      }
+    }
+
     // Convert request parameters
     if (req.params) {
       for (const key in req.params) {
