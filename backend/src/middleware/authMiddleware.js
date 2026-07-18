@@ -1,5 +1,6 @@
 const { supabase } = require('../config/supabase');
 const { sendError } = require('../utils/response');
+const { uuidToBigInt } = require('../utils/uuidHelper');
 
 /**
  * Middleware to verify Supabase Auth Bearer Token
@@ -19,6 +20,28 @@ const authMiddleware = async (req, res, next) => {
     
     if (error || !user) {
       return sendError(res, 'Invalid or expired authentication token', 401);
+    }
+
+    // Convert Supabase UUID to database-compatible bigint string
+    user.id = uuidToBigInt(user.id);
+
+    // Convert request parameters
+    if (req.params) {
+      for (const key in req.params) {
+        req.params[key] = uuidToBigInt(req.params[key]);
+      }
+    }
+
+    // Convert request body fields
+    if (req.body) {
+      if (req.body.id)          req.body.id          = uuidToBigInt(req.body.id);
+      if (req.body.customer_id) req.body.customer_id = uuidToBigInt(req.body.customer_id);
+      if (req.body.created_by)  req.body.created_by  = uuidToBigInt(req.body.created_by);
+    }
+
+    // Convert query parameters
+    if (req.query) {
+      if (req.query.customer_id) req.query.customer_id = uuidToBigInt(req.query.customer_id);
     }
 
     // Set user on request object

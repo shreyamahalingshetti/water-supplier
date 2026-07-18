@@ -7,6 +7,14 @@ export default {
   theme: {
     extend: {
       colors: {
+        /* Jal Seva brand colors */
+        "water-blue": "#4FC3F7",
+        "warm-brown": "#8D6E63",
+        "water-blue-dark": "#0288D1",
+        "water-blue-light": "#B3E5FC",
+        "warm-brown-dark": "#6D4C41",
+        "warm-brown-light": "#BCAAA4",
+        /* Legacy tokens kept for other pages */
         "tertiary": "#5f5e5e",
         "outline-variant": "#bdc8d0",
         "error": "#ba1a1a",

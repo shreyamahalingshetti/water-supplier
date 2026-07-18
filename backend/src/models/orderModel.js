@@ -1,4 +1,4 @@
-const { supabase } = require('../config/supabase');
+const { supabaseAdmin: supabase } = require('../config/supabase');
 
 /**
  * Order Model interacting with Supabase PostgreSQL 'orders' table

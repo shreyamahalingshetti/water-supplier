@@ -44,6 +44,60 @@ const authService = {
   },
 
   /**
+   * Sign up customer using phone and password and create a user profile record
+   * @param {string} phone - Customer's phone number
+   * @param {string} password - Customer's password
+   * @param {string} name - Customer's name
+   * @param {string} area - Customer's area / locality
+   */
+  signup: async (phone, password, name, area) => {
+    const { data, error } = await supabase.auth.signUp({
+      phone: phone,
+      password: password
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (data && data.user) {
+      const { uuidToBigInt } = require('../utils/uuidHelper');
+      const User = require('../models/userModel');
+      
+      const bigIntId = uuidToBigInt(data.user.id);
+      
+      // Create user profile record in PostgreSQL
+      await User.create({
+        id: bigIntId,
+        name: name,
+        phone: phone,
+        role: 'customer',
+        area: area
+      });
+    }
+
+    return data;
+  },
+
+  /**
+   * Log in customer using phone and password
+   * @param {string} phone - Customer's phone number
+   * @param {string} password - Customer's password
+   */
+  login: async (phone, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      phone: phone,
+      password: password
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  },
+
+  /**
    * Log in supplier using email and password
    * @param {string} email - Supplier's email
    * @param {string} password - Supplier's password
@@ -79,3 +133,4 @@ const authService = {
 };
 
 module.exports = authService;
+

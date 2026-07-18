@@ -1,4 +1,4 @@
-const { supabase } = require('../config/supabase');
+const { supabaseAdmin: supabase } = require('../config/supabase');
 
 /**
  * User Model interacting with Supabase PostgreSQL 'users' table
@@ -14,10 +14,8 @@ const User = {
         id: data.id,
         name: data.name,
         phone: data.phone,
-        email: data.email || null,
         role: data.role || 'customer',
-        area: data.area || null,
-        address: data.address || null
+        area: data.area || null
       })
       .select()
       .single();
@@ -105,8 +103,7 @@ const User = {
       .update({
         name: data.name,
         phone: data.phone,
-        area: data.area,
-        address: data.address
+        area: data.area
       })
       .eq('id', id)
       .select()

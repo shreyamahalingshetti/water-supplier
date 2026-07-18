@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 /**
  * OrderForm Component for Jal Seva
  * Adheres strictly to the 3-color scheme:
@@ -31,7 +33,9 @@ function OrderForm() {
   const [frequencyDays, setFrequencyDays] = useState(7);
   const [loading, setLoading] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState(null);  // API response data
   const [errors, setErrors] = useState({});
+  const [apiError, setApiError] = useState('');
 
   const validateForm = () => {
     const tempErrors = {};
@@ -61,17 +65,86 @@ function OrderForm() {
     return Object.keys(tempErrors).length === 0;
   };
 
-  const handlePlaceOrderSubmit = (e) => {
+  const handlePlaceOrderSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    // Guard: token must exist
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    setApiError('');
     setLoading(true);
 
-    // Simulate backend booking API action delay
-    setTimeout(() => {
-      setLoading(false);
+    const authHeaders = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
+
+    const orderBody = {
+      quantity:              cans,
+      delivery_date:         deliveryDate,
+      time_slot:             timeSlot,
+      area,
+      special_instructions:  specialInstructions,
+      is_recurring:          isRecurring,
+    };
+
+    try {
+      // Step 1 — Create the order
+      const orderRes = await fetch(`${API_URL}/orders`, {
+        method:  'POST',
+        headers: authHeaders,
+        body:    JSON.stringify(orderBody),
+      });
+
+      if (orderRes.status === 401) {
+        localStorage.removeItem('accessToken');
+        navigate('/login');
+        return;
+      }
+
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) {
+        throw new Error(orderData.message || 'Failed to place order. Please try again.');
+      }
+
+      // Step 2 — If recurring, also create the schedule
+      if (isRecurring) {
+        const recRes = await fetch(`${API_URL}/recurring-orders`, {
+          method:  'POST',
+          headers: authHeaders,
+          body: JSON.stringify({
+            quantity:      cans,
+            time_slot:     timeSlot,
+            area,
+            frequency_days: frequencyDays,
+          }),
+        });
+
+        if (recRes.status === 401) {
+          localStorage.removeItem('accessToken');
+          navigate('/login');
+          return;
+        }
+
+        const recData = await recRes.json();
+        if (!recRes.ok) {
+          throw new Error(recData.message || 'Order placed but failed to set recurring schedule.');
+        }
+      }
+
+      // Success
+      setPlacedOrder(orderData.data || orderData);
       setOrderPlaced(true);
-    }, 1500);
+    } catch (err) {
+      setApiError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -107,6 +180,14 @@ function OrderForm() {
 
         {orderPlaced ? (
           <div className="w-full text-center space-y-4">
+            {/* Success icon */}
+            <div className="flex items-center justify-center">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: '#E8F5E9' }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            </div>
             <h2 className="text-xl font-bold text-[#3E2723]">Order Placed!</h2>
             <p className="text-sm text-[#3E2723]/90">
               Your water delivery request has been recorded. We will send a WhatsApp notification shortly.
@@ -115,22 +196,37 @@ function OrderForm() {
               <div className="font-bold uppercase tracking-wider text-xs border-b border-[#3E2723]/30 pb-1 mb-2">
                 Booking Reference
               </div>
-              <div>Cans: {cans}</div>
-              <div>Date: {deliveryDate}</div>
-              <div>Slot: {timeSlot}</div>
-              <div>Locality: {area}</div>
-              {isRecurring && <div>Schedule: Every {frequencyDays} Days</div>}
+              {placedOrder?.id && (
+                <div>Order ID: <span className="font-semibold text-[#4FC3F7]">#{placedOrder.id}</span></div>
+              )}
+              <div>Cans: <span className="font-semibold">{cans}</span></div>
+              <div>Date: <span className="font-semibold">{deliveryDate}</span></div>
+              <div>Slot: <span className="font-semibold">{timeSlot}</span></div>
+              <div>Locality: <span className="font-semibold">{area}</span></div>
+              {isRecurring && (
+                <div className="text-[#4FC3F7] font-semibold">★ Recurring: Every {frequencyDays} days</div>
+              )}
             </div>
-            <button
-              onClick={() => {
-                setOrderPlaced(false);
-                setCans(1);
-                setIsRecurring(false);
-              }}
-              className="w-full py-3 bg-[#4FC3F7] text-[#FFFFFF] font-bold rounded-lg hover:bg-opacity-90 active:scale-95 transition-all text-center outline-none focus:ring-2 focus:ring-[#4FC3F7]"
-            >
-              Book Another Order
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="flex-1 py-3 bg-[#FFFFFF] text-[#4FC3F7] font-bold rounded-lg border-2 border-[#4FC3F7] hover:bg-[#F0F9FF] active:scale-95 transition-all outline-none"
+              >
+                My Orders
+              </button>
+              <button
+                onClick={() => {
+                  setOrderPlaced(false);
+                  setPlacedOrder(null);
+                  setApiError('');
+                  setCans(1);
+                  setIsRecurring(false);
+                }}
+                className="flex-1 py-3 bg-[#4FC3F7] text-[#FFFFFF] font-bold rounded-lg hover:bg-[#0288D1] active:scale-95 transition-all outline-none focus:ring-2 focus:ring-[#4FC3F7]"
+              >
+                Book Another
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handlePlaceOrderSubmit} className="w-full space-y-4">
@@ -263,16 +359,26 @@ function OrderForm() {
               </div>
             </div>
 
+            {/* API error banner */}
+            {apiError && (
+              <div className="flex items-start gap-2 px-4 py-3 rounded-lg text-sm font-medium bg-red-50 border border-red-200 text-red-700">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                {apiError}
+              </div>
+            )}
+
             {/* Place Order Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-[#4FC3F7] text-[#FFFFFF] font-bold rounded-lg hover:bg-opacity-90 active:scale-95 transition-all flex items-center justify-center outline-none focus:ring-2 focus:ring-[#4FC3F7]"
+              className="w-full py-3 bg-[#4FC3F7] text-[#FFFFFF] font-bold rounded-lg hover:bg-[#0288D1] active:scale-95 transition-all flex items-center justify-center gap-2 outline-none focus:ring-2 focus:ring-[#4FC3F7] shadow-md"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-[#FFFFFF]/30 border-t-[#FFFFFF] rounded-full animate-spin" />
               ) : (
-                'Place Order'
+                isRecurring ? 'Place Recurring Order' : 'Place Order'
               )}
             </button>
           </form>

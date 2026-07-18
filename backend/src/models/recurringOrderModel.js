@@ -1,4 +1,4 @@
-const { supabase } = require('../config/supabase');
+const { supabaseAdmin: supabase } = require('../config/supabase');
 
 /**
  * RecurringOrder Model interacting with Supabase PostgreSQL 'recurring_orders' table

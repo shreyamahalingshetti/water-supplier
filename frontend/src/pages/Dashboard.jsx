@@ -1,5 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 /**
  * Customer Dashboard for Jal Seva
@@ -7,80 +9,171 @@ import { useNavigate } from 'react-router-dom';
  *  - #4FC3F7  water blue  → buttons, accents, active states
  *  - #FFFFFF  white       → backgrounds, cards
  *  - #3E2723  dark brown  → text, borders, labels
+ *
+ * All data is fetched from the backend on mount.
+ * Customer ID is decoded from the JWT accessToken (Supabase sub claim).
  */
+
+/* ── JWT decoder (no crypto — just reads payload) ── */
+function decodeJwtSub(token) {
+  try {
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    return decoded.sub || null;
+  } catch {
+    return null;
+  }
+}
+
 function Dashboard() {
   const navigate = useNavigate();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef(null);
 
-  const [profile] = useState({
-    name: 'John Doe',
-    phone: '+91 9876543210',
-    area: 'Indiranagar',
-    initials: 'JD',
+  /* ── Data states ── */
+  const [profile,         setProfile]         = useState(null);
+  const [orders,          setOrders]          = useState([]);
+  const [recurringOrders, setRecurringOrders] = useState([]);
+  const [disruption,      setDisruption]      = useState('');
+  const [notifications,   setNotifications]   = useState([]);
+
+  /* ── UI states ── */
+  const [loading,        setLoading]        = useState(true);
+  const [fetchError,     setFetchError]     = useState('');
+  const [togglingId,     setTogglingId]     = useState(null); // recurring order being toggled
+
+  /* ── Auth helper ── */
+  const getAuthHeaders = () => ({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
   });
 
-  const [orders] = useState([
-    {
-      id: 'ORD-8291',
-      quantity: 2,
-      deliveryDate: '2026-07-15',
-      timeSlot: 'Morning 7am–10am',
-      address: 'No 42, 5th Cross, Indiranagar',
-      status: 'Pending',
-    },
-    {
-      id: 'ORD-7193',
-      quantity: 1,
-      deliveryDate: '2026-07-12',
-      timeSlot: 'Afternoon 12pm–3pm',
-      address: 'No 42, 5th Cross, Indiranagar',
-      status: 'Delivered',
-    },
-  ]);
+  /* ── 401 handler ── */
+  const handle401 = useCallback(() => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('userRole');
+    navigate('/login');
+  }, [navigate]);
 
-  const [recurringOrders, setRecurringOrders] = useState([
-    {
-      id: 'REC-304',
-      quantity: 1,
-      frequencyDays: 3,
-      nextDelivery: '2026-07-17',
-      isActive: true,
-    },
-    {
-      id: 'REC-112',
-      quantity: 2,
-      frequencyDays: 7,
-      nextDelivery: '2026-07-21',
-      isActive: false,
-    },
-  ]);
+  /* ── Fetch all dashboard data ── */
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
 
-  const [disruption] = useState(
-    'Notice: Delivery services will be suspended on 2026-07-16 due to local pipe main repair works. Please stock up accordingly.'
-  );
+    const customerId = decodeJwtSub(token);
+    if (!customerId) {
+      navigate('/login');
+      return;
+    }
 
-  const [notifications] = useState([
-    {
-      id: 'NTF-1',
-      time: '10 mins ago',
-      message: 'Your order ORD-8291 has been confirmed for delivery on 2026-07-15.',
-    },
-    {
-      id: 'NTF-2',
-      time: '2 days ago',
-      message: 'Your order ORD-7193 was successfully delivered.',
-    },
-  ]);
+    const fetchAll = async () => {
+      setLoading(true);
+      setFetchError('');
 
-  const toggleRecurringActive = (id) => {
-    setRecurringOrders((prev) =>
-      prev.map((rec) => (rec.id === id ? { ...rec, isActive: !rec.isActive } : rec))
-    );
+      try {
+        // Fire all requests in parallel (disruption is public)
+        const [profileRes, ordersRes, recurringRes, disruptionRes, notifRes] =
+          await Promise.all([
+            fetch(`${API_URL}/users/${customerId}`,                    { headers: getAuthHeaders() }),
+            fetch(`${API_URL}/orders/customer/${customerId}`,          { headers: getAuthHeaders() }),
+            fetch(`${API_URL}/recurring-orders/customer/${customerId}`,{ headers: getAuthHeaders() }),
+            fetch(`${API_URL}/disruptions/today`),
+            fetch(`${API_URL}/notifications/customer/${customerId}`,   { headers: getAuthHeaders() }),
+          ]);
+
+        // Check for 401s first
+        if ([profileRes, ordersRes, recurringRes, notifRes].some((r) => r.status === 401)) {
+          handle401();
+          return;
+        }
+
+        /* Profile */
+        if (profileRes.ok) {
+          const d = await profileRes.json();
+          const p = d.data || d;
+          const nameParts = (p.name || '').trim().split(' ');
+          const initials =
+            nameParts.length >= 2
+              ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+              : (p.name || 'U').slice(0, 2).toUpperCase();
+          setProfile({ ...p, initials });
+        }
+
+        /* Orders */
+        if (ordersRes.ok) {
+          const d = await ordersRes.json();
+          setOrders(d.data || d || []);
+        }
+
+        /* Recurring orders */
+        if (recurringRes.ok) {
+          const d = await recurringRes.json();
+          setRecurringOrders(d.data || d || []);
+        }
+
+        /* Disruption — optional, no error if missing */
+        if (disruptionRes.ok) {
+          const d = await disruptionRes.json();
+          const msg = d.data?.message || d.message || '';
+          setDisruption(msg);
+        }
+
+        /* Notifications */
+        if (notifRes.ok) {
+          const d = await notifRes.json();
+          setNotifications(d.data || d || []);
+        }
+      } catch (err) {
+        setFetchError('Failed to load dashboard data. Please refresh or try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAll();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate, handle401]);
+
+  /* ── Pause / Resume recurring order ── */
+  const toggleRecurringActive = async (rec) => {
+    const action = rec.is_active ? 'pause' : 'resume';
+    setTogglingId(rec.id);
+    try {
+      const res = await fetch(`${API_URL}/recurring-orders/${rec.id}/${action}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+      });
+
+      if (res.status === 401) { handle401(); return; }
+      if (!res.ok) throw new Error('Failed to update subscription.');
+
+      // Refresh recurring orders list
+      const token      = localStorage.getItem('accessToken');
+      const customerId = decodeJwtSub(token);
+      const refreshRes = await fetch(
+        `${API_URL}/recurring-orders/customer/${customerId}`,
+        { headers: getAuthHeaders() }
+      );
+      if (refreshRes.ok) {
+        const d = await refreshRes.json();
+        setRecurringOrders(d.data || d || []);
+      }
+    } catch (err) {
+      // Optimistic fallback: just flip locally so UI doesn't freeze
+      setRecurringOrders((prev) =>
+        prev.map((r) => (r.id === rec.id ? { ...r, is_active: !r.is_active } : r))
+      );
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('userRole');
     navigate('/login');
   };
 
@@ -95,6 +188,37 @@ function Dashboard() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  /* ── Computed helpers ── */
+  const initials   = profile?.initials   ?? '?';
+  const name       = profile?.name       ?? '—';
+  const phone      = profile?.phone      ?? '—';
+  const area       = profile?.area       ?? '—';
+  const activeSubs = recurringOrders.filter((r) => r.is_active).length;
+
+  /* ── Status badge helper ── */
+  const statusBadge = (status = '') => {
+    const s = status.toLowerCase();
+    if (s === 'pending')
+      return 'bg-amber-50 text-amber-700 border border-amber-200';
+    if (s === 'delivered')
+      return 'bg-[#4FC3F7]/15 text-[#0288D1] border border-[#4FC3F7]/40';
+    return 'bg-[#3E2723]/10 text-[#3E2723]/70 border border-[#3E2723]/20';
+  };
+
+  /* ── Format relative time ── */
+  const relTime = (dateStr) => {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins  = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days  = Math.floor(diff / 86400000);
+    if (mins  < 1)  return 'Just now';
+    if (mins  < 60) return `${mins} min${mins > 1 ? 's' : ''} ago`;
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    return `${days} day${days > 1 ? 's' : ''} ago`;
+  };
+
+  /* ────────────────────────────── JSX ────────────────────────────── */
   return (
     <div className="min-h-screen bg-[#F5F7FA] flex flex-col">
 
@@ -127,7 +251,7 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Nav right: New Order + Account avatar */}
+          {/* Nav right */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/place-order')}
@@ -140,50 +264,36 @@ function Dashboard() {
             <div className="relative" ref={accountMenuRef}>
               <button
                 onClick={() => setAccountMenuOpen((o) => !o)}
-                className="flex items-center gap-2 pl-1 pr-3 py-1.5 rounded-full hover:bg-[#3E2723]/8 transition-colors group"
+                className="flex items-center gap-2 pl-1 pr-3 py-1.5 rounded-full hover:bg-[#3E2723]/8 transition-colors"
                 aria-label="Account menu"
               >
-                {/* Avatar circle */}
                 <div className="w-9 h-9 rounded-full bg-[#4FC3F7] flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
-                  {profile.initials}
+                  {initials}
                 </div>
                 <div className="hidden md:block text-left">
-                  <div className="text-sm font-semibold text-[#3E2723] leading-tight">
-                    {profile.name}
-                  </div>
-                  <div className="text-[11px] text-[#3E2723]/60 leading-tight">
-                    {profile.area}
-                  </div>
+                  <div className="text-sm font-semibold text-[#3E2723] leading-tight">{name}</div>
+                  <div className="text-[11px] text-[#3E2723]/60 leading-tight">{area}</div>
                 </div>
-                {/* Chevron */}
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className={`w-4 h-4 text-[#3E2723]/50 transition-transform duration-200 ${
-                    accountMenuOpen ? 'rotate-180' : ''
-                  }`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
+                  className={`w-4 h-4 text-[#3E2723]/50 transition-transform duration-200 ${accountMenuOpen ? 'rotate-180' : ''}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
-              {/* Dropdown */}
               {accountMenuOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-[#3E2723]/10 overflow-hidden z-50 animate-[fadeIn_0.15s_ease]">
-                  {/* Profile info header */}
                   <div className="px-4 py-3 bg-[#4FC3F7]/8 border-b border-[#3E2723]/10">
-                    <div className="font-semibold text-[#3E2723] text-sm">{profile.name}</div>
-                    <div className="text-[11px] text-[#3E2723]/60 mt-0.5">{profile.phone}</div>
-                    <div className="text-[11px] text-[#3E2723]/60">{profile.area}</div>
+                    <div className="font-semibold text-[#3E2723] text-sm">{name}</div>
+                    <div className="text-[11px] text-[#3E2723]/60 mt-0.5">{phone}</div>
+                    <div className="text-[11px] text-[#3E2723]/60">{area}</div>
                   </div>
-                  {/* Menu items */}
                   <div className="py-1">
                     <button
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#3E2723] hover:bg-[#F5F7FA] transition-colors text-left"
-                      onClick={() => { setAccountMenuOpen(false); }}
+                      onClick={() => setAccountMenuOpen(false)}
                     >
                       <span className="material-symbols-outlined text-[18px] text-[#4FC3F7]">person</span>
                       My Profile
@@ -214,157 +324,216 @@ function Dashboard() {
       {/* ── PAGE BODY ── */}
       <main className="flex-1 max-w-screen-xl mx-auto w-full px-6 py-8 space-y-6">
 
-        {/* Disruption banner */}
-        {disruption && (
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
-            <span className="material-symbols-outlined text-amber-500 mt-0.5 shrink-0">warning</span>
+        {/* ── Global loading spinner ── */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-24 gap-4">
+            <div className="w-10 h-10 border-4 border-[#4FC3F7]/30 border-t-[#4FC3F7] rounded-full animate-spin" />
+            <p className="text-sm text-[#3E2723]/60">Loading your dashboard…</p>
+          </div>
+        )}
+
+        {/* ── Fetch error ── */}
+        {!loading && fetchError && (
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
             <div className="text-sm">
-              <span className="font-bold uppercase tracking-wider text-xs block mb-0.5">
-                Service Announcement
-              </span>
-              {disruption}
+              <span className="font-bold block mb-0.5">Error</span>
+              {fetchError}
             </div>
           </div>
         )}
 
-        {/* ── MAIN GRID: left 2/3 + right 1/3 ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* LEFT COLUMN */}
-          <div className="lg:col-span-2 space-y-6">
-
-            {/* Your Bookings */}
-            <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#3E2723]/10">
-                <h2 className="text-base font-bold text-[#3E2723]">Your Bookings</h2>
-                <button
-                  onClick={() => navigate('/place-order')}
-                  className="flex items-center gap-1 px-4 py-2 bg-[#4FC3F7] text-white font-semibold rounded-lg text-xs hover:bg-[#29B6F6] active:scale-95 transition-all"
-                >
-                  + New Order
-                </button>
+        {/* ── Main content (shown after load) ── */}
+        {!loading && !fetchError && (
+          <>
+            {/* Disruption banner */}
+            {disruption && (
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
+                <span className="material-symbols-outlined text-amber-500 mt-0.5 shrink-0">warning</span>
+                <div className="text-sm">
+                  <span className="font-bold uppercase tracking-wider text-xs block mb-0.5">
+                    Service Announcement
+                  </span>
+                  {disruption}
+                </div>
               </div>
+            )}
 
-              <div className="divide-y divide-[#3E2723]/8">
-                {orders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between px-6 py-4 hover:bg-[#F5F7FA] transition-colors">
-                    <div className="space-y-1">
-                      <div className="font-semibold text-[#3E2723] text-sm">
-                        {order.id} &nbsp;·&nbsp; {order.quantity} Can{order.quantity > 1 ? 's' : ''}
-                      </div>
-                      <div className="text-xs text-[#3E2723]/60">{order.deliveryDate} &nbsp;|&nbsp; {order.timeSlot}</div>
-                      <div className="text-xs text-[#3E2723]/60">{order.address}</div>
-                    </div>
-                    <span
-                      className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide ${
-                        order.status === 'Pending'
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                          : 'bg-[#4FC3F7]/15 text-[#0288D1] border border-[#4FC3F7]/40'
-                      }`}
+            {/* ── MAIN GRID ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+              {/* LEFT COLUMN */}
+              <div className="lg:col-span-2 space-y-6">
+
+                {/* Your Bookings */}
+                <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm overflow-hidden">
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-[#3E2723]/10">
+                    <h2 className="text-base font-bold text-[#3E2723]">Your Bookings</h2>
+                    <button
+                      onClick={() => navigate('/place-order')}
+                      className="flex items-center gap-1 px-4 py-2 bg-[#4FC3F7] text-white font-semibold rounded-lg text-xs hover:bg-[#29B6F6] active:scale-95 transition-all"
                     >
-                      {order.status.toUpperCase()}
-                    </span>
+                      + New Order
+                    </button>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Recurring Subscriptions */}
-            <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-[#3E2723]/10">
-                <h2 className="text-base font-bold text-[#3E2723]">Recurring Subscriptions</h2>
-              </div>
-
-              <div className="divide-y divide-[#3E2723]/8">
-                {recurringOrders.map((rec) => (
-                  <div
-                    key={rec.id}
-                    className="flex items-center justify-between px-6 py-4 hover:bg-[#F5F7FA] transition-colors"
-                  >
-                    <div className="space-y-1">
-                      <div className="font-semibold text-[#3E2723] text-sm">
-                        {rec.id} &nbsp;·&nbsp; {rec.quantity} Can{rec.quantity > 1 ? 's' : ''}
-                      </div>
-                      <div className="text-xs text-[#3E2723]/60">
-                        Every {rec.frequencyDays} days &nbsp;·&nbsp; Next: {rec.nextDelivery}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className={`text-[11px] font-bold ${rec.isActive ? 'text-[#4FC3F7]' : 'text-[#3E2723]/40'}`}>
-                        {rec.isActive ? 'ACTIVE' : 'PAUSED'}
-                      </span>
-                      {/* Toggle switch */}
-                      <button
-                        onClick={() => toggleRecurringActive(rec.id)}
-                        className={`relative w-12 h-6 rounded-full transition-colors duration-300 outline-none focus:ring-2 focus:ring-[#4FC3F7]/40 ${
-                          rec.isActive ? 'bg-[#4FC3F7]' : 'bg-[#3E2723]/20'
-                        }`}
-                      >
-                        <span
-                          className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all duration-300 ${
-                            rec.isActive ? 'left-7' : 'left-1'
-                          }`}
-                        />
+                  {orders.length === 0 ? (
+                    <div className="px-6 py-10 text-center text-[#3E2723]/50 text-sm">
+                      No orders yet.{' '}
+                      <button className="text-[#4FC3F7] font-semibold hover:underline" onClick={() => navigate('/place-order')}>
+                        Place your first order →
                       </button>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT COLUMN */}
-          <div className="space-y-6">
-
-            {/* Profile card */}
-            <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm p-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-[#4FC3F7] flex items-center justify-center text-white font-bold text-base shadow">
-                  {profile.initials}
-                </div>
-                <div>
-                  <div className="font-bold text-[#3E2723] text-sm">{profile.name}</div>
-                  <div className="text-[11px] text-[#3E2723]/60">{profile.phone}</div>
-                  <div className="text-[11px] text-[#3E2723]/60">{profile.area}</div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-center">
-                <div className="p-2 rounded-lg bg-[#F5F7FA]">
-                  <div className="text-lg font-bold text-[#4FC3F7]">{orders.length}</div>
-                  <div className="text-[10px] text-[#3E2723]/60 uppercase tracking-wide">Orders</div>
-                </div>
-                <div className="p-2 rounded-lg bg-[#F5F7FA]">
-                  <div className="text-lg font-bold text-[#4FC3F7]">
-                    {recurringOrders.filter((r) => r.isActive).length}
-                  </div>
-                  <div className="text-[10px] text-[#3E2723]/60 uppercase tracking-wide">Active Subs</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Alerts */}
-            <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#3E2723]/10">
-                <h2 className="text-base font-bold text-[#3E2723]">Recent Alerts</h2>
-              </div>
-              <div className="divide-y divide-[#3E2723]/8">
-                {notifications.map((ntf) => (
-                  <div key={ntf.id} className="px-5 py-4 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-[#4FC3F7] uppercase tracking-wider">
-                        WhatsApp
-                      </span>
-                      <span className="text-[10px] text-[#3E2723]/50">{ntf.time}</span>
+                  ) : (
+                    <div className="divide-y divide-[#3E2723]/8">
+                      {orders.map((order) => (
+                        <div key={order.id} className="flex items-center justify-between px-6 py-4 hover:bg-[#F5F7FA] transition-colors">
+                          <div className="space-y-1">
+                            <div className="font-semibold text-[#3E2723] text-sm">
+                              #{order.id}&nbsp;·&nbsp;{order.quantity} Can{order.quantity > 1 ? 's' : ''}
+                            </div>
+                            <div className="text-xs text-[#3E2723]/60">
+                              {order.delivery_date}&nbsp;|&nbsp;{order.time_slot}
+                            </div>
+                            {order.area && (
+                              <div className="text-xs text-[#3E2723]/60">{order.area}</div>
+                            )}
+                          </div>
+                          <span className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide ${statusBadge(order.status)}`}>
+                            {(order.status || 'UNKNOWN').toUpperCase()}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                    <p className="text-xs text-[#3E2723]/80 leading-relaxed">{ntf.message}</p>
+                  )}
+                </div>
+
+                {/* Recurring Subscriptions */}
+                <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-[#3E2723]/10">
+                    <h2 className="text-base font-bold text-[#3E2723]">Recurring Subscriptions</h2>
                   </div>
-                ))}
+
+                  {recurringOrders.length === 0 ? (
+                    <div className="px-6 py-10 text-center text-[#3E2723]/50 text-sm">
+                      No recurring subscriptions. Set one up when placing an order.
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-[#3E2723]/8">
+                      {recurringOrders.map((rec) => (
+                        <div
+                          key={rec.id}
+                          className="flex items-center justify-between px-6 py-4 hover:bg-[#F5F7FA] transition-colors"
+                        >
+                          <div className="space-y-1">
+                            <div className="font-semibold text-[#3E2723] text-sm">
+                              #{rec.id}&nbsp;·&nbsp;{rec.quantity} Can{rec.quantity > 1 ? 's' : ''}
+                            </div>
+                            <div className="text-xs text-[#3E2723]/60">
+                              Every {rec.frequency_days} days
+                              {rec.next_delivery_date && (
+                                <>&nbsp;·&nbsp;Next: {rec.next_delivery_date}</>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className={`text-[11px] font-bold ${rec.is_active ? 'text-[#4FC3F7]' : 'text-[#3E2723]/40'}`}>
+                              {rec.is_active ? 'ACTIVE' : 'PAUSED'}
+                            </span>
+                            {/* Toggle switch */}
+                            <button
+                              onClick={() => toggleRecurringActive(rec)}
+                              disabled={togglingId === rec.id}
+                              className={`relative w-12 h-6 rounded-full transition-colors duration-300 outline-none focus:ring-2 focus:ring-[#4FC3F7]/40 ${
+                                togglingId === rec.id
+                                  ? 'opacity-50 cursor-wait'
+                                  : rec.is_active
+                                  ? 'bg-[#4FC3F7]'
+                                  : 'bg-[#3E2723]/20'
+                              }`}
+                            >
+                              {togglingId === rec.id ? (
+                                <span className="absolute inset-0 flex items-center justify-center">
+                                  <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                </span>
+                              ) : (
+                                <span
+                                  className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all duration-300 ${
+                                    rec.is_active ? 'left-7' : 'left-1'
+                                  }`}
+                                />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN */}
+              <div className="space-y-6">
+
+                {/* Profile card */}
+                <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm p-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-[#4FC3F7] flex items-center justify-center text-white font-bold text-base shadow">
+                      {initials}
+                    </div>
+                    <div>
+                      <div className="font-bold text-[#3E2723] text-sm">{name}</div>
+                      <div className="text-[11px] text-[#3E2723]/60">{phone}</div>
+                      <div className="text-[11px] text-[#3E2723]/60">{area}</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-center">
+                    <div className="p-2 rounded-lg bg-[#F5F7FA]">
+                      <div className="text-lg font-bold text-[#4FC3F7]">{orders.length}</div>
+                      <div className="text-[10px] text-[#3E2723]/60 uppercase tracking-wide">Orders</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-[#F5F7FA]">
+                      <div className="text-lg font-bold text-[#4FC3F7]">{activeSubs}</div>
+                      <div className="text-[10px] text-[#3E2723]/60 uppercase tracking-wide">Active Subs</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recent Alerts */}
+                <div className="bg-white rounded-2xl border border-[#3E2723]/10 shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-[#3E2723]/10">
+                    <h2 className="text-base font-bold text-[#3E2723]">Recent Alerts</h2>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div className="px-5 py-8 text-center text-[#3E2723]/50 text-sm">
+                      No notifications yet.
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-[#3E2723]/8">
+                      {notifications.map((ntf) => (
+                        <div key={ntf.id} className="px-5 py-4 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-[#4FC3F7] uppercase tracking-wider">
+                              {ntf.channel || 'WhatsApp'}
+                            </span>
+                            <span className="text-[10px] text-[#3E2723]/50">
+                              {relTime(ntf.created_at) || ntf.time}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#3E2723]/80 leading-relaxed">{ntf.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
               </div>
             </div>
-
-          </div>
-        </div>
+          </>
+        )}
       </main>
     </div>
   );

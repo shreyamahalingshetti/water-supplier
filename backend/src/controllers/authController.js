@@ -44,6 +44,44 @@ const authController = {
   },
 
   /**
+   * Sign up customer using phone and password
+   */
+  signup: async (req, res, next) => {
+    try {
+      const { phone, password, name, area } = req.body;
+
+      if (!phone || !password || !name || !area) {
+        return sendError(res, 'Phone number, password, name, and area/locality are required', 400);
+      }
+
+      const data = await authService.signup(phone, password, name, area);
+
+      return sendSuccess(res, 'Customer registered and profile created successfully', data, 201);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Log in customer using phone and password
+   */
+  login: async (req, res, next) => {
+    try {
+      const { phone, password } = req.body;
+
+      if (!phone || !password) {
+        return sendError(res, 'Phone number and password are required', 400);
+      }
+
+      const data = await authService.login(phone, password);
+
+      return sendSuccess(res, 'Customer authenticated successfully', data);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
    * Authenticate supplier using email and password
    */
   supplierLogin: async (req, res, next) => {
