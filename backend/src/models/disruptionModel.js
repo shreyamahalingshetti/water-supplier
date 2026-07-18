@@ -5,15 +5,29 @@ const { supabaseAdmin: supabase } = require('../config/supabase');
  */
 const Disruption = {
   /**
+   * Helper to map database rows to expected model format
+   */
+  mapRow: (row) => {
+    if (!row) return null;
+    return {
+      id: row.id,
+      title: 'Water Supply Disruption',
+      description: row.message,
+      message: row.message,
+      disruption_date: row.created_at ? row.created_at.split('T')[0] : null,
+      created_by: row.created_by,
+      created_at: row.created_at
+    };
+  },
+
+  /**
    * Create a new disruption announcement
    */
   create: async (data) => {
     const { data: disruption, error } = await supabase
       .from('disruptions')
       .insert({
-        title: data.title,
-        description: data.description,
-        disruption_date: data.disruption_date,
+        message: data.description || data.message || 'Water delivery service is temporarily suspended.',
         created_by: data.created_by
       })
       .select()
@@ -23,7 +37,7 @@ const Disruption = {
       throw error;
     }
 
-    return disruption;
+    return Disruption.mapRow(disruption);
   },
 
   /**
@@ -33,13 +47,13 @@ const Disruption = {
     const { data: disruptions, error } = await supabase
       .from('disruptions')
       .select('*')
-      .order('disruption_date', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) {
       throw error;
     }
 
-    return disruptions;
+    return (disruptions || []).map(Disruption.mapRow);
   },
 
   /**
@@ -56,23 +70,27 @@ const Disruption = {
       throw error;
     }
 
-    return disruption;
+    return Disruption.mapRow(disruption);
   },
 
   /**
    * Check if a disruption exists for a specific calendar date (YYYY-MM-DD)
    */
   findByDate: async (date) => {
+    const start = `${date}T00:00:00.000Z`;
+    const end = `${date}T23:59:59.999Z`;
+
     const { data: disruptions, error } = await supabase
       .from('disruptions')
       .select('*')
-      .eq('disruption_date', date);
+      .gte('created_at', start)
+      .lte('created_at', end);
 
     if (error) {
       throw error;
     }
 
-    return disruptions.length > 0 ? disruptions[0] : null;
+    return disruptions.length > 0 ? Disruption.mapRow(disruptions[0]) : null;
   },
 
   /**
@@ -90,8 +108,9 @@ const Disruption = {
       throw error;
     }
 
-    return disruption;
+    return Disruption.mapRow(disruption);
   }
 };
 
 module.exports = Disruption;
+
