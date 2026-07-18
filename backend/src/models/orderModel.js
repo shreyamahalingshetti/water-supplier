@@ -13,6 +13,7 @@ const Order = {
       .insert({
         customer_id: data.customer_id,
         delivery_date: data.delivery_date,
+        time_slot: data.time_slot,
         area: data.area,
         status: data.status || 'pending',
         quantity: data.quantity,
@@ -20,6 +21,7 @@ const Order = {
       })
       .select()
       .single();
+
 
     if (error) {
       throw error;

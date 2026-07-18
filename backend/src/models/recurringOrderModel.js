@@ -17,10 +17,12 @@ const RecurringOrder = {
         is_active: data.is_active !== undefined ? data.is_active : true,
         area: data.area,
         quantity: data.quantity,
-        address: data.address
+        address: data.address,
+        time_slot: data.time_slot
       })
       .select()
       .single();
+
 
     if (error) {
       throw error;
