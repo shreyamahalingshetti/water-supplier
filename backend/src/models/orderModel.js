@@ -17,10 +17,12 @@ const Order = {
         area: data.area,
         status: data.status || 'pending',
         quantity: data.quantity,
-        address: data.address
+        address: data.address,
+        is_recurring: data.is_recurring !== undefined ? data.is_recurring : false
       })
       .select()
       .single();
+
 
 
     if (error) {
