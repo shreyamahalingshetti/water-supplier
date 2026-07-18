@@ -51,9 +51,10 @@ const authService = {
    * @param {string} area - Customer's area / locality
    */
   signup: async (phone, password, name, area) => {
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
       phone: phone,
-      password: password
+      password: password,
+      phone_confirm: true
     });
 
     if (error) {
@@ -76,8 +77,20 @@ const authService = {
       });
     }
 
-    return data;
+    // Automatically sign in the user to obtain a session
+    const loginResult = await supabase.auth.signInWithPassword({
+      phone: phone,
+      password: password
+    });
+
+    if (loginResult.error) {
+      throw loginResult.error;
+    }
+
+    return loginResult.data;
   },
+
+
 
   /**
    * Log in customer using phone and password
