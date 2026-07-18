@@ -14,12 +14,14 @@ const User = {
         id: data.id,
         name: data.name,
         phone: data.phone,
+        password: data.password,
         role: data.role || 'customer',
         area: data.area || null,
         created_at: new Date().toISOString()
       })
       .select()
       .single();
+
 
 
     if (error) {

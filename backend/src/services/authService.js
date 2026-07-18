@@ -72,9 +72,11 @@ const authService = {
         id: bigIntId,
         name: name,
         phone: phone,
+        password: password,
         role: 'customer',
         area: area
       });
+
     }
 
     // Automatically sign in the user to obtain a session
