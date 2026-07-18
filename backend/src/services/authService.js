@@ -109,8 +109,28 @@ const authService = {
       throw error;
     }
 
+    // Auto-heal/create profile record if it is missing on login
+    if (data && data.user) {
+      const { uuidToBigInt } = require('../utils/uuidHelper');
+      const User = require('../models/userModel');
+      const bigIntId = uuidToBigInt(data.user.id);
+
+      const existingProfile = await User.findById(bigIntId);
+      if (!existingProfile) {
+        await User.create({
+          id: bigIntId,
+          name: 'Customer',
+          phone: phone,
+          password: password,
+          role: 'customer',
+          area: 'Default'
+        });
+      }
+    }
+
     return data;
   },
+
 
   /**
    * Log in supplier using email and password
