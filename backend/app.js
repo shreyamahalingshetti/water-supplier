@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const logger = require('./src/utils/logger');
 const { sendSuccess, sendError } = require('./src/utils/response');
 
@@ -13,6 +14,9 @@ const disruptionRoutes = require('./src/routes/disruptionRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 
 const app = express();
+
+// Gzip Compression
+app.use(compression());
 
 // Security Headers
 app.use(helmet());
