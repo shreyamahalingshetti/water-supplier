@@ -105,3 +105,4 @@ The root route returns a health check response.
 
 - Admin pages are intentionally kept separate from the bilingual customer experience.
 - The backend uses Supabase for data access and Twilio for notification delivery.
+- Recurring orders are advanced in Supabase via `supabase/migrations/20260719_auto_advance_recurring_orders.sql`.
