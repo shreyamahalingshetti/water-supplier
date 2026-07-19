@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { translations } from '../utils/translations.js';
 
@@ -10,6 +10,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
  */
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { language, toggleLanguage } = useLanguage();
   const tr = translations[language];
 
@@ -21,11 +22,17 @@ function Login() {
 
   const canvasRef = useRef(null);
 
-  // Pre-fill phone from signup flow if stored
+  // Pre-fill phone from signup flow if stored, and display state message if present
   useEffect(() => {
     const savedPhone = localStorage.getItem('signupPhone');
     if (savedPhone) setPhone(savedPhone);
-  }, []);
+
+    if (location.state && location.state.message) {
+      setError(location.state.message);
+      // Clear location state so the message doesn't persist on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
 
   /* ── WebGL shader wave background ── */
   useEffect(() => {

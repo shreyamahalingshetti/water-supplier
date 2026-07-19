@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { translations, t } from '../utils/translations.js';
@@ -17,6 +17,19 @@ function OrderForm() {
   const navigate = useNavigate();
   const { language, toggleLanguage } = useLanguage();
   const tr = translations[language];
+
+  // Synchronous auth check — read token immediately
+  const token = localStorage.getItem('accessToken');
+
+  // Redirect unauthenticated users before the form renders
+  useEffect(() => {
+    if (!token) {
+      navigate('/login', { state: { message: 'Login first' } });
+    }
+  }, [token, navigate]);
+
+  // Render nothing while the redirect is in-flight
+  if (!token) return null;
 
   // Date helper — tomorrow's date in YYYY-MM-DD
   const getTomorrowDateString = () => {
@@ -77,8 +90,8 @@ function OrderForm() {
     ev.preventDefault();
     if (!validateForm()) return;
 
-    const token = localStorage.getItem('accessToken');
-    if (!token) { navigate('/login'); return; }
+    // token is already available from the top-level scope guard
+    if (!token) { navigate('/login', { state: { message: 'Login first' } }); return; }
 
     setApiError('');
     setLoading(true);
@@ -98,7 +111,7 @@ function OrderForm() {
 
     try {
       const orderRes  = await fetch(`${API_URL}/orders`, { method: 'POST', headers, body: JSON.stringify(orderBody) });
-      if (orderRes.status === 401) { localStorage.removeItem('accessToken'); navigate('/login'); return; }
+      if (orderRes.status === 401) { localStorage.removeItem('accessToken'); navigate('/login', { state: { message: 'Login first' } }); return; }
       const orderData = await orderRes.json();
       if (!orderRes.ok) throw new Error(orderData.message || 'Failed to place order. Please try again.');
 
@@ -107,7 +120,7 @@ function OrderForm() {
           method: 'POST', headers,
           body: JSON.stringify({ quantity: cans, can_size: canSize, time_slot: timeSlot, area, frequency_days: frequencyDays }),
         });
-        if (recRes.status === 401) { localStorage.removeItem('accessToken'); navigate('/login'); return; }
+        if (recRes.status === 401) { localStorage.removeItem('accessToken'); navigate('/login', { state: { message: 'Login first' } }); return; }
         const recData = await recRes.json();
         if (!recRes.ok) throw new Error(recData.message || 'Order placed but failed to set recurring schedule.');
       }

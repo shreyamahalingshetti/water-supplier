@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { translations } from '../utils/translations.js';
 
@@ -64,8 +64,18 @@ const LangToggle = () => {
 const Navbar = () => {
   const { language } = useLanguage();
   const tr = translations[language];
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleOrderNow = () => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      navigate('/login', { state: { message: 'Login first' } });
+    } else {
+      navigate('/place-order');
+    }
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -123,12 +133,12 @@ const Navbar = () => {
             >
               {tr.nav_login}
             </Link>
-            <Link
-              to="/place-order"
+            <button
+              onClick={handleOrderNow}
               className="px-5 py-2 text-sm font-semibold text-white bg-water-blue rounded-full hover:bg-water-blue-dark shadow-md hover:shadow-lg transition-all duration-200"
             >
               {tr.nav_order_now}
-            </Link>
+            </button>
           </div>
 
           {/* Hamburger */}
@@ -161,7 +171,7 @@ const Navbar = () => {
             <div className="flex gap-3 pt-2 flex-wrap">
               <LangToggle />
               <Link to="/login" className="flex-1 text-center px-4 py-2 text-sm font-semibold text-water-blue border-2 border-water-blue rounded-full hover:bg-water-blue hover:text-white transition-all">{tr.nav_login}</Link>
-              <Link to="/place-order" className="flex-1 text-center px-4 py-2 text-sm font-semibold text-white bg-water-blue rounded-full hover:bg-water-blue-dark transition-all">{tr.nav_order_now}</Link>
+              <button onClick={handleOrderNow} className="flex-1 text-center px-4 py-2 text-sm font-semibold text-white bg-water-blue rounded-full hover:bg-water-blue-dark transition-all">{tr.nav_order_now}</button>
             </div>
           </div>
         )}
@@ -173,7 +183,17 @@ const Navbar = () => {
 /* ─── Hero Section ─── */
 const HeroSection = () => {
   const { language } = useLanguage();
+  const navigate = useNavigate();
   const tr = translations[language];
+
+  const handleOrderNow = () => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      navigate('/login', { state: { message: 'Login first' } });
+    } else {
+      navigate('/place-order');
+    }
+  };
   return (
     <section id="hero" className="relative min-h-screen flex items-center bg-white pt-16 overflow-hidden">
       <div className="absolute top-20 right-0 w-96 h-96 rounded-full bg-water-blue opacity-5 -translate-y-1/4 translate-x-1/4" />
@@ -204,13 +224,13 @@ const HeroSection = () => {
             </p>
 
             <div className="flex flex-wrap gap-4">
-              <Link
-                to="/place-order"
+              <button
+                onClick={handleOrderNow}
                 className="group inline-flex items-center gap-2 px-8 py-4 text-white font-bold bg-water-blue rounded-full shadow-lg shadow-water-blue/30 hover:bg-water-blue-dark hover:shadow-xl hover:shadow-water-blue/40 hover:-translate-y-0.5 transition-all duration-200"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
                 {tr.hero_order_now}
-              </Link>
+              </button>
               <button
                 onClick={() => document.querySelector('#how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
                 className="inline-flex items-center gap-2 px-8 py-4 text-water-blue font-bold border-2 border-water-blue rounded-full hover:bg-water-blue/5 hover:-translate-y-0.5 transition-all duration-200"
@@ -358,6 +378,16 @@ const CanSVG = ({ label }) => (
 
 const ProductsSection = () => {
   const { language } = useLanguage();
+  const navigate = useNavigate();
+
+  const handleOrderNow = () => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      navigate('/login', { state: { message: 'Login first' } });
+    } else {
+      navigate('/place-order');
+    }
+  };
   const tr = translations[language];
 
   const products = [
@@ -405,8 +435,8 @@ const ProductsSection = () => {
               <h3 className="text-2xl font-extrabold text-warm-brown mt-4 mb-1">{p.size} Can</h3>
               <p className="text-warm-brown/60 text-sm mb-4">{tr[p.descKey]}</p>
               <div className="text-3xl font-extrabold text-water-blue mb-6">{p.price}</div>
-              <Link
-                to="/place-order"
+              <button
+                onClick={handleOrderNow}
                 className={`w-full py-3 rounded-full text-sm font-bold transition-all duration-200
                   ${p.popular
                     ? 'bg-water-blue text-white hover:bg-water-blue-dark shadow-md hover:shadow-lg'
@@ -414,7 +444,7 @@ const ProductsSection = () => {
                   }`}
               >
                 {tr.products_order_now}
-              </Link>
+              </button>
             </div>
           ))}
         </div>
@@ -517,7 +547,17 @@ const StatsBanner = () => {
 /* ─── Footer ─── */
 const Footer = () => {
   const { language } = useLanguage();
+  const navigate = useNavigate();
   const tr = translations[language];
+
+  const handleOrderNow = () => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      navigate('/login', { state: { message: 'Login first' } });
+    } else {
+      navigate('/place-order');
+    }
+  };
 
   return (
     <footer id="footer" className="bg-warm-brown text-white relative overflow-hidden">
@@ -595,12 +635,12 @@ const Footer = () => {
                 </li>
               ))}
             </ul>
-            <Link
-              to="/place-order"
+            <button
+              onClick={handleOrderNow}
               className="mt-6 inline-flex items-center gap-2 px-5 py-3 bg-water-blue text-white text-sm font-bold rounded-full hover:bg-water-blue-dark transition-all duration-200 shadow-lg"
             >
               {tr.footer_order_now}
-            </Link>
+            </button>
           </div>
         </div>
 
