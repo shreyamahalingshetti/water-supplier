@@ -1332,6 +1332,12 @@ export default function AdminDashboard() {
       ]);
       if (todayRes.ok) { const d = await todayRes.json(); setOrdersToday(d.data || d || []); }
       if (allRes.ok)   { const d = await allRes.json();   setAllOrders(d.data || d || []); }
+
+      const recRes = await fetch(`${API_URL}/recurring-orders`, { headers: getHeaders() });
+      if (recRes.ok) {
+        const d = await recRes.json();
+        setRecurringOrders(d.data || d || []);
+      }
     } catch (err) {
       // Optimistic local update on network failure
       const update = arr => arr.map(o => o.id === id ? { ...o, status: 'delivered' } : o);

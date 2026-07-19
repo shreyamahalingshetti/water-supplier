@@ -1,4 +1,5 @@
 const orderService = require('../services/orderService');
+const recurringOrderService = require('../services/recurringOrderService');
 const { sendSuccess } = require('../utils/response');
 const { uuidToBigInt } = require('../utils/uuidHelper');
 
@@ -89,6 +90,12 @@ const orderController = {
       const { status } = req.body;
       
       const updatedOrder = await orderService.updateOrderStatus(id, status);
+
+      if ((status || '').toLowerCase() === 'delivered') {
+        recurringOrderService.processRecurringOrders().catch((error) => {
+          console.error('Failed to process recurring orders after delivery update:', error);
+        });
+      }
       
       return sendSuccess(res, 'Order status updated successfully', updatedOrder);
     } catch (error) {

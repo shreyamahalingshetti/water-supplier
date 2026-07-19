@@ -462,8 +462,8 @@ function Dashboard() {
                             </div>
                             <div className="text-xs text-[#3E2723]/60">
                               {t(tr, 'dash_every_x_days', { days: rec.frequency_days })}
-                              {rec.next_delivery_date && (
-                                <>&nbsp;·&nbsp;{language === 'kn' ? 'ಮುಂದಿನ ಡೆಲಿವರಿ' : 'Next'}: {rec.next_delivery_date}</>
+                              {(rec.next_delivery || rec.next_delivery_date) && (
+                                <>&nbsp;·&nbsp;{language === 'kn' ? 'ಮುಂದಿನ ಡೆಲಿವರಿ' : 'Next'}: {rec.next_delivery || rec.next_delivery_date}</>
                               )}
                             </div>
                           </div>
