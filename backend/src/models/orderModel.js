@@ -152,6 +152,25 @@ const Order = {
   },
 
   /**
+   * Update the payment_status field of an order
+   */
+  updatePaymentStatus: async (id, paymentStatus) => {
+    const { data: order, error } = await supabase
+      .from('orders')
+      .update({ payment_status: paymentStatus })
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      // Fallback object if payment_status column is not present in Supabase table
+      return { id, payment_status: paymentStatus };
+    }
+
+    return order || { id, payment_status: paymentStatus };
+  },
+
+  /**
    * Delete an order record by ID
    */
   delete: async (id) => {

@@ -24,6 +24,9 @@ router.get('/customer/:customerId', orderController.getByCustomer);
 // PUT /api/orders/:id/status - Supplier updates order status (pending/delivered/cancelled)
 router.put('/:id/status', orderController.updateStatus);
 
+// PUT /api/orders/:id/payment - Supplier updates order payment status (paid/unpaid)
+router.put('/:id/payment', orderController.updatePaymentStatus);
+
 // DELETE /api/orders/:id - Delete an order
 router.delete('/:id', orderController.delete);
 

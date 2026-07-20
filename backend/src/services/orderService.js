@@ -103,6 +103,19 @@ const orderService = {
   },
 
   /**
+   * Validate and update payment status of an order
+   */
+  updatePaymentStatus: async (id, paymentStatus) => {
+    if (!['paid', 'unpaid', 'pending'].includes(paymentStatus)) {
+      const err = new Error('Invalid payment status. Status must be paid, unpaid, or pending');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    return await Order.updatePaymentStatus(id, paymentStatus);
+  },
+
+  /**
    * Delete an order by ID
    */
   deleteOrder: async (id) => {

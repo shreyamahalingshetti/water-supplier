@@ -97,6 +97,22 @@ const orderController = {
   },
 
   /**
+   * Update the payment status of an order (Supplier)
+   */
+  updatePaymentStatus: async (req, res, next) => {
+    try {
+      const id = uuidToBigInt(req.params.id);
+      const { payment_status } = req.body;
+      
+      const updatedOrder = await orderService.updatePaymentStatus(id, payment_status);
+      
+      return sendSuccess(res, 'Payment status updated successfully', updatedOrder);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
    * Delete an order by ID (Customer/Supplier)
    */
   delete: async (req, res, next) => {

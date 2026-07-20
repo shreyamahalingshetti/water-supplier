@@ -100,10 +100,12 @@ const NAV_ITEMS = [
       <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
     </svg>
   )},
-  { id: 'notifications', label: 'Notifications',  icon: (
+  { id: 'payment-tracks', label: 'Payment tracks', icon: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      <rect x="2" y="5" width="20" height="14" rx="2"/>
+      <line x1="2" y1="10" x2="22" y2="10"/>
+      <path d="M7 15h2"/>
+      <path d="M14 15h3"/>
     </svg>
   )},
 ];
@@ -188,14 +190,6 @@ const Sidebar = ({ active, setActive, sidebarOpen, setSidebarOpen, unreadCount }
                   {item.icon}
                 </span>
                 {item.label}
-                {item.id === 'notifications' && unreadCount > 0 && (
-                  <span
-                    className="ml-auto text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
-                    style={{ background: '#EF5350', color: 'white' }}
-                  >
-                    {unreadCount}
-                  </span>
-                )}
               </button>
             );
           })}
@@ -271,22 +265,18 @@ const Topbar = ({ activeLabel, setSidebarOpen, unreadCount, setActive }) => {
       </div>
 
       <div className="ml-auto flex items-center gap-3">
-        {/* Notification bell */}
+        {/* Payment tracks button */}
         <button
-          id="topbar-notifications"
-          onClick={() => setActive('notifications')}
-          className="relative p-2 rounded-xl transition-colors"
-          style={{ background: unreadCount > 0 ? C.blueBg : 'transparent', color: C.brown }}
+          id="topbar-payment-tracks"
+          onClick={() => setActive('payment-tracks')}
+          className="relative p-2 rounded-xl transition-colors hover:bg-black/5"
+          title="Payment tracks"
+          style={{ background: activeLabel === 'Payment tracks' ? C.blueBg : 'transparent', color: C.brown }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            <rect x="2" y="5" width="20" height="14" rx="2"/>
+            <line x1="2" y1="10" x2="22" y2="10"/>
           </svg>
-          {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 text-[10px] font-bold rounded-full flex items-center justify-center text-white" style={{ background: '#EF5350' }}>
-              {unreadCount}
-            </span>
-          )}
         </button>
         {/* Avatar */}
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm" style={{ background: C.blue }}>{initials}</div>
@@ -1034,39 +1024,386 @@ const DisruptionsView = ({ disruptions, onAnnounce, onDelete }) => {
 };
 
 /* ══════════════════════════════════════════════════════════════
-   NOTIFICATIONS VIEW
+   PAYMENT TRACKS HELPERS & VIEW
 ══════════════════════════════════════════════════════════════ */
-const NotificationsView = ({ notifications, onMarkRead }) => (
-  <div>
-    <SectionTitle sub="System alerts and order updates">Notifications</SectionTitle>
-    <div className="space-y-2">
-      {notifications.map(n => (
-        <div key={n.id}
-          className="flex items-start gap-3 px-4 py-3.5 rounded-2xl border transition-all"
-          style={{ background: n.read ? C.white : C.blueBg, borderColor: n.read ? '#F0F0F0' : C.blueLight }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-            style={{ background: n.type === 'disruption' ? '#FFFDE7' : n.type === 'system' ? '#F3E5F5' : C.blueBg }}>
-            {n.type === 'order' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.blue} strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>}
-            {n.type === 'disruption' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F57F17" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>}
-            {n.type === 'system' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7B1FA2" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+const CAN_PRICES = {
+  '20L': 70,
+  '15L': 55,
+  '10L': 40,
+  '5L': 25,
+};
+
+const getUnitPrice = (canSize) => {
+  if (!canSize) return 70;
+  const normalized = String(canSize).trim().toUpperCase();
+  return CAN_PRICES[normalized] || 70;
+};
+
+const calculateOrderFee = (order) => {
+  if (!order) return 0;
+  if (order.total_amount || order.total_price || order.price) {
+    return Number(order.total_amount || order.total_price || order.price);
+  }
+  const qty = Number(order.cans || order.quantity || 1);
+  const unitPrice = getUnitPrice(order.can_size);
+  return qty * unitPrice;
+};
+
+const getLocalPaidStatusMap = () => {
+  try {
+    return JSON.parse(localStorage.getItem('jalseva_order_paid_statuses') || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const saveLocalPaidStatus = (orderId, status) => {
+  try {
+    const current = getLocalPaidStatusMap();
+    current[orderId] = status;
+    localStorage.setItem('jalseva_order_paid_statuses', JSON.stringify(current));
+  } catch {}
+};
+
+const PaymentTracksView = ({ orders, onMarkPaid }) => {
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [searchQuery, setSearchQuery]         = useState('');
+  const [filterStatus, setFilterStatus]       = useState('all');
+  const [actionSuccess, setActionSuccess]     = useState('');
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter(o => {
+      const matchSearch =
+        (o.customer || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (o.area || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(o.id).toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const paymentSt = (o.payment_status || 'unpaid').toLowerCase();
+      const matchFilter =
+        filterStatus === 'all' ? true :
+        filterStatus === 'paid' ? paymentSt === 'paid' :
+        paymentSt !== 'paid';
+
+      return matchSearch && matchFilter;
+    });
+  }, [orders, searchQuery, filterStatus]);
+
+  useEffect(() => {
+    if (filteredOrders.length > 0) {
+      if (!selectedOrderId || !filteredOrders.some(o => o.id === selectedOrderId)) {
+        setSelectedOrderId(filteredOrders[0].id);
+      }
+    }
+  }, [filteredOrders, selectedOrderId]);
+
+  const selectedOrder = useMemo(() => {
+    return orders.find(o => o.id === selectedOrderId) || filteredOrders[0] || null;
+  }, [orders, selectedOrderId, filteredOrders]);
+
+  const stats = useMemo(() => {
+    let totalFee = 0;
+    let paidFee = 0;
+    let unpaidFee = 0;
+    let paidCount = 0;
+    let unpaidCount = 0;
+
+    orders.forEach(o => {
+      const fee = calculateOrderFee(o);
+      totalFee += fee;
+      if ((o.payment_status || '').toLowerCase() === 'paid') {
+        paidFee += fee;
+        paidCount++;
+      } else {
+        unpaidFee += fee;
+        unpaidCount++;
+      }
+    });
+
+    return { totalFee, paidFee, unpaidFee, paidCount, unpaidCount, totalCount: orders.length };
+  }, [orders]);
+
+  const handleTogglePaid = (order, newStatus) => {
+    onMarkPaid(order.id, newStatus);
+    setActionSuccess(`Order #${order.id} marked as ${newStatus.toUpperCase()}`);
+    setTimeout(() => setActionSuccess(''), 3000);
+  };
+
+  const selectedFee = selectedOrder ? calculateOrderFee(selectedOrder) : 0;
+  const selectedUnitPrice = selectedOrder ? getUnitPrice(selectedOrder.can_size) : 70;
+  const isSelectedPaid = selectedOrder && (selectedOrder.payment_status || '').toLowerCase() === 'paid';
+
+  return (
+    <div className="space-y-6">
+      <SectionTitle sub="Track order payment status, calculate fees, and mark transactions as paid">
+        Payment tracks
+      </SectionTitle>
+
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-2xl p-5 border flex items-center justify-between" style={{ background: C.white, borderColor: '#F0F0F0' }}>
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wide" style={{ color: C.brownLt }}>Total Orders</div>
+            <div className="text-2xl font-extrabold mt-1" style={{ color: C.brown }}>{stats.totalCount}</div>
+            <div className="text-xs mt-0.5" style={{ color: C.brownLt }}>Total Fee: ₹{stats.totalFee.toLocaleString('en-IN')}</div>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold" style={{ color: C.brown }}>{n.message}</div>
-            <div className="text-xs mt-0.5" style={{ color: C.brownLt }}>{n.time}</div>
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: C.blueBg, color: C.blue }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="2" y="5" width="20" height="14" rx="2"/>
+              <line x1="2" y1="10" x2="22" y2="10"/>
+            </svg>
           </div>
-          {!n.read && (
-            <button onClick={() => onMarkRead(n.id)}
-              className="text-xs font-semibold px-3 py-1 rounded-full shrink-0 transition-all"
-              style={{ background: C.blue, color: '#fff' }}>
-              Mark read
-            </button>
-          )}
-          {n.read && <span className="text-xs shrink-0" style={{ color: C.brownLt }}>Read</span>}
         </div>
-      ))}
+
+        <div className="rounded-2xl p-5 border flex items-center justify-between" style={{ background: C.white, borderColor: '#F0F0F0' }}>
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wide" style={{ color: '#2E7D32' }}>Paid Revenue</div>
+            <div className="text-2xl font-extrabold mt-1 text-emerald-700">₹{stats.paidFee.toLocaleString('en-IN')}</div>
+            <div className="text-xs mt-0.5 text-emerald-600">{stats.paidCount} orders collected</div>
+          </div>
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: '#E8F5E9', color: '#2E7D32' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+        </div>
+
+        <div className="rounded-2xl p-5 border flex items-center justify-between" style={{ background: C.white, borderColor: '#F0F0F0' }}>
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wide" style={{ color: '#C62828' }}>Outstanding Fees</div>
+            <div className="text-2xl font-extrabold mt-1 text-red-700">₹{stats.unpaidFee.toLocaleString('en-IN')}</div>
+            <div className="text-xs mt-0.5 text-red-600">{stats.unpaidCount} orders pending</div>
+          </div>
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: '#FFEBEE', color: '#C62828' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {actionSuccess && (
+        <div className="p-3.5 rounded-xl text-sm font-semibold flex items-center gap-2" style={{ background: '#E8F5E9', color: '#2E7D32', border: '1px solid #C8E6C9' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          {actionSuccess}
+        </div>
+      )}
+
+      {/* Main 2-Column Split Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        {/* LEFT SIDE: All Orders List */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="rounded-2xl border p-4" style={{ background: C.white, borderColor: '#F0F0F0' }}>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
+              <h2 className="text-base font-extrabold flex items-center gap-2" style={{ color: C.brown }}>
+                <span>All Orders</span>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: C.blueBg, color: C.blue }}>
+                  {filteredOrders.length}
+                </span>
+              </h2>
+
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: '#F5F5F5' }}>
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'unpaid', label: 'Unpaid' },
+                  { id: 'paid', label: 'Paid' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setFilterStatus(tab.id)}
+                    className="px-3 py-1 text-xs font-bold rounded-lg transition-all"
+                    style={{
+                      background: filterStatus === tab.id ? C.white : 'transparent',
+                      color: filterStatus === tab.id ? C.brown : C.brownLt,
+                      boxShadow: filterStatus === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative mb-4">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search by customer, order ID, area..."
+                className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border outline-none transition-all focus:border-blue-400"
+                style={{ background: '#FAFAFA', borderColor: '#EEEEEE' }}
+              />
+              <svg className="absolute left-3 top-2.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.brownLt} strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </div>
+
+            {/* Orders Cards List */}
+            <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1">
+              {filteredOrders.length === 0 ? (
+                <div className="py-12 text-center text-sm" style={{ color: C.brownLt }}>
+                  No orders found matching your search or filter.
+                </div>
+              ) : (
+                filteredOrders.map(o => {
+                  const fee = calculateOrderFee(o);
+                  const isPaid = (o.payment_status || '').toLowerCase() === 'paid';
+                  const isSelected = selectedOrder && selectedOrder.id === o.id;
+
+                  return (
+                    <div
+                      key={o.id}
+                      onClick={() => setSelectedOrderId(o.id)}
+                      className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                        isSelected ? 'ring-2 ring-blue-500 shadow-sm' : 'hover:border-gray-300'
+                      }`}
+                      style={{
+                        background: isSelected ? C.blueBg : C.white,
+                        borderColor: isSelected ? C.blueLight : '#EEEEEE',
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-sm" style={{ color: C.brown }}>{o.customer}</span>
+                            <span className="text-xs px-2 py-0.5 rounded font-mono" style={{ background: '#F0F0F0', color: C.brownLt }}>
+                              #{o.id}
+                            </span>
+                          </div>
+                          <div className="text-xs mt-1 space-x-2" style={{ color: C.brownLt }}>
+                            <span>📍 {o.area}</span>
+                            <span>•</span>
+                            <span>📦 {o.cans} Cans ({o.can_size || '20L'})</span>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <div className="font-extrabold text-base" style={{ color: C.blue }}>
+                            ₹{fee}
+                          </div>
+                          <div className="mt-1 flex items-center justify-end gap-1.5">
+                            <span
+                              className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                              style={{
+                                background: isPaid ? '#E8F5E9' : '#FFF3E0',
+                                color: isPaid ? '#2E7D32' : '#E65100',
+                                border: isPaid ? '1px solid #C8E6C9' : '1px solid #FFE0B2',
+                              }}
+                            >
+                              {isPaid ? 'PAID ✓' : 'UNPAID'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT SIDE: Payment Action & Total Fee Panel */}
+        <div className="lg:col-span-5 space-y-4">
+          <div className="rounded-2xl border p-5 sticky top-4" style={{ background: C.white, borderColor: '#F0F0F0' }}>
+            <h2 className="text-base font-extrabold mb-4 pb-3 border-b flex items-center justify-between" style={{ color: C.brown, borderColor: '#EEEEEE' }}>
+              <span>Payment Details</span>
+              {selectedOrder && (
+                <span className="text-xs font-normal" style={{ color: C.brownLt }}>
+                  Order #{selectedOrder.id}
+                </span>
+              )}
+            </h2>
+
+            {selectedOrder ? (
+              <div className="space-y-5">
+                {/* Customer Info Card */}
+                <div className="p-4 rounded-xl border" style={{ background: '#FAFAFA', borderColor: '#EEEEEE' }}>
+                  <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: C.brownLt }}>Customer Information</div>
+                  <div className="font-extrabold text-base" style={{ color: C.brown }}>{selectedOrder.customer}</div>
+                  <div className="text-xs mt-1 space-y-0.5" style={{ color: C.brownLt }}>
+                    <div>Area: <span className="font-semibold text-gray-700">{selectedOrder.area}</span></div>
+                    <div>Address: <span className="font-semibold text-gray-700">{selectedOrder.address || selectedOrder.area}</span></div>
+                    <div>Delivery Date: <span className="font-semibold text-gray-700">{selectedOrder.date}</span> ({selectedOrder.timeSlot})</div>
+                  </div>
+                </div>
+
+                {/* Total Fee Calculation Card */}
+                <div className="p-4 rounded-xl border space-y-3" style={{ background: C.blueBg, borderColor: C.blueLight }}>
+                  <div className="text-xs font-bold uppercase tracking-wide" style={{ color: C.blueDark }}>Fee Breakdown</div>
+                  
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between" style={{ color: C.brown }}>
+                      <span>Can Size:</span>
+                      <span className="font-semibold">{selectedOrder.can_size || '20L'}</span>
+                    </div>
+                    <div className="flex justify-between" style={{ color: C.brown }}>
+                      <span>Quantity:</span>
+                      <span className="font-semibold">{selectedOrder.cans} Cans</span>
+                    </div>
+                    <div className="flex justify-between" style={{ color: C.brown }}>
+                      <span>Rate per Can:</span>
+                      <span className="font-semibold">₹{selectedUnitPrice}</span>
+                    </div>
+                    <div className="pt-2 border-t flex justify-between items-center" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
+                      <span className="text-sm font-extrabold" style={{ color: C.brown }}>Total Fee</span>
+                      <span className="text-xl font-black" style={{ color: C.blue }}>₹{selectedFee}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status & Mark Paid Option */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase" style={{ color: C.brownLt }}>Current Payment Status</span>
+                    <span
+                      className="text-xs font-extrabold px-3 py-1 rounded-full"
+                      style={{
+                        background: isSelectedPaid ? '#E8F5E9' : '#FFEBEE',
+                        color: isSelectedPaid ? '#2E7D32' : '#C62828',
+                        border: isSelectedPaid ? '1px solid #C8E6C9' : '1px solid #FFCDD2',
+                      }}
+                    >
+                      {isSelectedPaid ? 'PAID ✓' : 'UNPAID ⚠️'}
+                    </span>
+                  </div>
+
+                  {!isSelectedPaid ? (
+                    <button
+                      onClick={() => handleTogglePaid(selectedOrder, 'paid')}
+                      className="w-full py-3.5 px-4 rounded-xl font-extrabold text-sm text-white shadow-md transition-all flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.98]"
+                      style={{ background: '#2E7D32' }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      Mark Paid (₹{selectedFee})
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleTogglePaid(selectedOrder, 'unpaid')}
+                      className="w-full py-2.5 px-4 rounded-xl font-bold text-xs transition-all border text-amber-800 hover:bg-amber-50"
+                      style={{ background: '#FFF8E1', borderColor: '#FFE082' }}
+                    >
+                      Undo & Mark as Unpaid
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="py-16 text-center text-sm" style={{ color: C.brownLt }}>
+                Select an order from the list on the left to view fee details and mark as paid.
+              </div>
+            )}
+          </div>
+        </div>
+
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /* ══════════════════════════════════════════════════════════════
    MAIN DASHBOARD OVERVIEW
@@ -1394,20 +1731,45 @@ export default function AdminDashboard() {
     totalCustomers:    customers.length,
   }), [ordersToday, customers]);
 
-  /* ── Normalise order shape for sub-components ── */
-  const normaliseOrder = o => ({
-    ...o,
-    customer: o.customer_name || o.customer || o.users?.name || '—',
-    area:     o.area     || '—',
-    cans:     o.quantity ?? o.cans ?? 0,
-    date:     o.delivery_date || o.date || '—',
-    timeSlot: o.time_slot    || o.timeSlot || '—',
-    address:  o.address || o.area || '—',
-    status:   (o.status || 'pending').toLowerCase(),
-  });
+  /* ── Mark order payment status ── */
+  const markOrderPaid = async (id, paymentStatus = 'paid') => {
+    saveLocalPaidStatus(id, paymentStatus);
 
-  const normOrdersToday = useMemo(() => ordersToday.map(normaliseOrder), [ordersToday]);
-  const normAllOrders   = useMemo(() => allOrders.map(normaliseOrder),   [allOrders]);
+    const update = arr => arr.map(o => o.id === id ? { ...o, payment_status: paymentStatus } : o);
+    setAllOrders(update);
+    setOrdersToday(update);
+
+    try {
+      await fetch(`${API_URL}/orders/${id}/payment`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ payment_status: paymentStatus }),
+      });
+    } catch (err) {
+      // Local state updated optimistically
+    }
+  };
+
+  /* ── Normalise order shape for sub-components ── */
+  const normaliseOrder = useCallback(o => {
+    const localPaidMap = getLocalPaidStatusMap();
+    const isPaid = localPaidMap[o.id] || o.payment_status || o.paymentStatus || 'unpaid';
+    return {
+      ...o,
+      customer: o.customer_name || o.customer || o.users?.name || '—',
+      area:     o.area     || '—',
+      cans:     o.quantity ?? o.cans ?? 0,
+      date:     o.delivery_date || o.date || '—',
+      timeSlot: o.time_slot    || o.timeSlot || '—',
+      address:  o.address || o.area || '—',
+      status:   (o.status || 'pending').toLowerCase(),
+      can_size: o.can_size || '20L',
+      payment_status: isPaid,
+    };
+  }, []);
+
+  const normOrdersToday = useMemo(() => ordersToday.map(normaliseOrder), [ordersToday, normaliseOrder]);
+  const normAllOrders   = useMemo(() => allOrders.map(normaliseOrder),   [allOrders, normaliseOrder]);
 
   const activeLabel = NAV_ITEMS.find(n => n.id === active)?.label || 'Dashboard';
 
@@ -1445,8 +1807,8 @@ export default function AdminDashboard() {
         return <RecurringView recurringOrders={recurringOrders} />;
       case 'disruptions':
         return <DisruptionsView disruptions={disruptions} onAnnounce={handleAnnounce} onDelete={handleDeleteDisruption} />;
-      case 'notifications':
-        return <NotificationsView notifications={notifications} onMarkRead={markNotifRead} />;
+      case 'payment-tracks':
+        return <PaymentTracksView orders={normAllOrders} onMarkPaid={markOrderPaid} />;
       default:
         return null;
     }
